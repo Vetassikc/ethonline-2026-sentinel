@@ -1,5 +1,9 @@
 # Vartovii Sentinel-8004
 
+## ETHOnline 2026 working entry point
+
+This public repository is being extended during ETHOnline 2026 Continuity. The current event scope, implementation plan, route contract, live-data gate, continuity disclosure and AI attribution are collected in [START_HERE.md](START_HERE.md). The new Position Evidence feature is explicitly marked as planned until its live Graph path is implemented and verified.
+
 ![Sentinel-8004 cover](assets/cover/sentinel-8004-cover.png)
 
 > Signed trade-permit guardrail for autonomous trading agents.
