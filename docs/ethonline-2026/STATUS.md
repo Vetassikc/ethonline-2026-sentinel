@@ -10,10 +10,11 @@
 - Dashboard: attendance confirmed and Continuity already selected.
 - Project form inspected, not submitted; creation needs name/category/emoji.
 - Current Graph target and event deadline rechecked against official pages.
+- `npm run graph:preflight` added with fail-closed missing-config handling and sanitized `_meta` output; it has not been run against a live deployment yet.
 
 ## Not done
 
-No new application code, live Graph adapter, new permit signature, AI tool integration or evidence UI. No live source/deployment/account chosen or verified. No portal project creation, final submission, public push, hosting deployment, wallet transaction or outbound message.
+No live Graph adapter, new permit signature, AI tool integration or evidence UI. No live source/deployment/account chosen or verified. The ETHGlobal project profile is now saved and linked to the public repository; final submission remains disabled. No hosting deployment, wallet transaction or outbound message.
 
 Existing test success is baseline regression evidence only. It does not validate the proposed feature, live credentials, source correctness, current deployments or sponsor qualification.
 

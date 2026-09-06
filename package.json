@@ -19,6 +19,7 @@
     "judge:verify-intent": "node scripts/verify-signed-intent.ts",
     "judge:agent-anchor": "node scripts/prepare-agent-registry-anchor.ts",
     "judge:kraken-paper": "node scripts/kraken-paper-smoke.ts",
+    "graph:preflight": "node scripts/graph-preflight.ts",
     "slides:pdf": "bash scripts/export-slides-pdf.sh",
     "test": "node --test api/tests/*.test.ts"
   },

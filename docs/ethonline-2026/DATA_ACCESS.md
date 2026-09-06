@@ -8,7 +8,15 @@ Open [Subgraph Studio](https://thegraph.com/studio/). Under API Keys, choose Cre
 
 Use a fixed gateway host and server-side Authorization bearer header. The supported URL shape is `https://gateway.thegraph.com/api/subgraphs/id/<SUBGRAPH_ID>`. Instructions checked against [Graph API-key documentation](https://thegraph.com/docs/en/subgraphs/providers/subgraph-studio/managing-api-keys/) on September 5. No free quota or zero-cost live operation is promised.
 
-Planned environment variables (not consumed by baseline code): `GRAPH_API_KEY`, `GRAPH_SUBGRAPH_ID`, `GRAPH_CHAIN_ID`. Add only public protocol/account identifiers to a sanitized source manifest. Do not use a funded wallet key as an application signing secret.
+The preflight CLI now consumes `GRAPH_API_KEY`, `GRAPH_SUBGRAPH_ID` and optional `GRAPH_CHAIN_ID`; see [.env.ethonline.example](../../.env.ethonline.example). Copy names into a local ignored `.env.local` or export them in the shell. Add only public protocol/account identifiers to a sanitized source manifest. Do not use a funded wallet key as an application signing secret.
+
+From the project directory, run the first check after exporting values:
+
+```sh
+GRAPH_API_KEY="$GRAPH_API_KEY" GRAPH_SUBGRAPH_ID="$GRAPH_SUBGRAPH_ID" GRAPH_CHAIN_ID="8453" npm run graph:preflight
+```
+
+The command performs a bounded read-only `_meta` query and prints only provider status, subgraph ID, indexed block metadata, age and warnings. It never prints the API key. A missing configuration exits with status 2 without making a network request.
 
 ## Select the smallest viable source
 
