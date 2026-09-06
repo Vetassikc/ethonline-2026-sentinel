@@ -13,8 +13,13 @@ The preflight CLI now consumes `GRAPH_API_KEY`, `GRAPH_SUBGRAPH_ID` and optional
 From the project directory, run the first check after exporting values:
 
 ```sh
-GRAPH_API_KEY="$GRAPH_API_KEY" GRAPH_SUBGRAPH_ID="$GRAPH_SUBGRAPH_ID" GRAPH_CHAIN_ID="8453" npm run graph:preflight
+set -a
+source .env.local
+set +a
+npm run graph:preflight
 ```
+
+Set `GRAPH_CHAIN_ID` only after choosing the actual deployment; the preflight does not guess a chain from the subgraph ID.
 
 The command performs a bounded read-only `_meta` query and prints only provider status, subgraph ID, indexed block metadata, age and warnings. It never prints the API key. A missing configuration exits with status 2 without making a network request.
 
