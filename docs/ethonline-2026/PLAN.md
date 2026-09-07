@@ -13,15 +13,15 @@ Design: [SPEC.md](SPEC.md). Dates use Europe/Zurich. This plan starts from verif
 
 ## 1. Prove data access — September 5–6
 
-Files to add: `scripts/graph-preflight.ts`, `api/app/graph-client.ts`, `api/tests/graph-client.test.ts`, a sanitized source manifest under `docs/ethonline-2026/`.
+Files: `scripts/graph-preflight.ts`, `api/app/graph-client.ts`, `api/tests/graph-client.test.ts`, `scripts/graph-position.ts`, and a sanitized source manifest under `docs/ethonline-2026/`.
 
-1. Follow DATA_ACCESS; select one public account/deployment and record exact schema/field types.
-2. Write failing tests for missing configuration, timeout, GraphQL errors, indexing error, invalid subject, missing freshness, incomplete pagination and successful parsing.
-3. Implement a fixed-host adapter using server-side bearer auth; never print credentials or raw auth errors.
-4. Run tests; execute a real bounded query. Record query template, variables, block provenance, retrieval time and sanitized output. Do not commit real user portfolio data.
-5. Freeze the exposure formula and supported market in SPEC using actual available fields. A green fixture test alone does not complete this milestone.
+1. [x] Follow DATA_ACCESS; inspect the configured deployment's actual account-level schema and record exact schema/field types.
+2. [x] Write failing tests for missing configuration, timeout, GraphQL errors, indexing error, invalid subject, missing freshness, incomplete pagination and successful parsing.
+3. [x] Implement a fixed-host adapter using server-side bearer auth; never print credentials or raw auth errors.
+4. [x] Execute a real bounded query and record query template, variables, block provenance, retrieval time and sanitized output. Do not commit real user portfolio data.
+5. [ ] Freeze the exposure formula and supported market in SPEC using a freshness-checked valuation source. A green fixture test alone does not complete this milestone.
 
-Exit: reproducible live evidence for one policy, with known freshness and no invented fields. Stop UI expansion if this gate fails.
+Exit: reproducible live evidence for one policy, with known freshness and no invented fields. Current source passes position/block access but fails the USD-valuation qualification; stop UI expansion until the gap is resolved or the policy is explicitly changed.
 
 ## 2. Evidence and deterministic decisions — September 6–7
 

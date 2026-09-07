@@ -8,7 +8,7 @@ Open [Subgraph Studio](https://thegraph.com/studio/). Under API Keys, choose Cre
 
 Use a fixed gateway host and server-side Authorization bearer header. The supported URL shape is `https://gateway.thegraph.com/api/subgraphs/id/<SUBGRAPH_ID>`. Instructions checked against [Graph API-key documentation](https://thegraph.com/docs/en/subgraphs/providers/subgraph-studio/managing-api-keys/) on September 5. No free quota or zero-cost live operation is promised.
 
-The preflight CLI now consumes `GRAPH_API_KEY`, `GRAPH_SUBGRAPH_ID` and optional `GRAPH_CHAIN_ID`; see [.env.ethonline.example](../../.env.ethonline.example). Copy names into a local ignored `.env.local` or export them in the shell. Add only public protocol/account identifiers to a sanitized source manifest. Do not use a funded wallet key as an application signing secret.
+The preflight CLI consumes `GRAPH_API_KEY`, `GRAPH_SUBGRAPH_ID` and optional `GRAPH_CHAIN_ID`; the position query additionally requires a deliberately selected public `GRAPH_DEMO_ACCOUNT`; see [.env.ethonline.example](../../.env.ethonline.example). Copy names into a local ignored `.env.local` or export them in the shell. Add only public protocol/account identifiers to a sanitized source manifest. Do not use a funded wallet key as an application signing secret.
 
 From the project directory, run the first check after exporting values:
 
@@ -20,6 +20,8 @@ npm run graph:preflight
 ```
 
 Set `GRAPH_CHAIN_ID` only after choosing the actual deployment; the preflight does not guess a chain from the subgraph ID.
+
+After the metadata gate passes, run `npm run graph:position` to execute the fixed, paginated `userReserves` query. This is a source adapter, not yet the evidence-policy decision. It records raw amounts and provider `priceInEth` fields; if no verified USD valuation is available, `usd_valuation_unavailable` remains a visible gap.
 
 The command performs a bounded read-only `_meta` query and prints only provider status, subgraph ID, indexed block metadata, age and warnings. It never prints the API key. A missing configuration exits with status 2 without making a network request.
 

@@ -16,11 +16,11 @@ Baseline policy verdict signatures are deterministic demo artifacts; they are di
 
 ## New work completed September 5
 
-Local isolation, baseline verification and the planning/documentation package: START_HERE.md, CONTINUITY.md, AI_ATTRIBUTION.md and docs/ethonline-2026/*.md. A small read-only `scripts/graph-preflight.ts` command and its tests now verify missing configuration handling and sanitized Graph `_meta` metadata; `GRAPH_SETUP_GUIDE.md` explains the values and source-selection gate. This is a feasibility tool, not the position-evidence feature.
+Local isolation, baseline verification and the planning/documentation package: START_HERE.md, CONTINUITY.md, AI_ATTRIBUTION.md and docs/ethonline-2026/*.md. The new read-only `scripts/graph-preflight.ts` command and `api/app/graph-client.ts` adapter now verify sanitized Graph `_meta` metadata and bounded account-level `UserReserve` observations. The live sample exposes an explicit USD-valuation gap and stale-oracle gap, so this remains source evidence work, not a completed permit policy or UI.
 
 ## Planned new work, not yet delivered
 
-Live Graph adapter, normalized position evidence with freshness/gaps, deterministic evidence-policy restriction, real evidence-bound permit/verifier, restricted AI tool and single-screen demo. Move items here into a completed ledger only with actual file paths, commits and verification evidence.
+Qualified valuation mapping, normalized `position_evidence.v1`, deterministic evidence-policy restriction, real evidence-bound permit/verifier, restricted AI tool and single-screen demo. Move items here into a completed ledger only with actual file paths, commits and verification evidence.
 
 ## Verify the boundary
 

@@ -1,6 +1,6 @@
 # The Graph setup — beginner guide
 
-This guide explains the three values in `.env.local` and how to find a suitable Lending/CDP source. It does not create a key, connect a wallet, or choose a provider on the founder's behalf.
+This guide explains the Graph values in `.env.local` and how to find a suitable Lending/CDP source. It does not create a key, connect a wallet, or choose a provider on the founder's behalf.
 
 ## The three values in plain language
 
@@ -9,6 +9,7 @@ This guide explains the three values in `.env.local` and how to find a suitable 
 | `GRAPH_API_KEY` | A credential that lets our server query The Graph Gateway | Subgraph Studio → API Keys | Not a wallet private key; never commit or paste it |
 | `GRAPH_SUBGRAPH_ID` | The identifier of the dataset/application schema we want to query | Graph Explorer → a Subgraph detail page | Not a contract address, chain ID or Deployment ID |
 | `GRAPH_CHAIN_ID` | The numeric EVM network identifier for the data source | The Subgraph detail page's Network, cross-checked with the chain's docs | Not a wallet balance, RPC URL or subgraph identifier |
+| `GRAPH_DEMO_ACCOUNT` | A public 20-byte address whose indexed positions we will display in the demo | A founder-selected public address, never a private key | Not a seed phrase, wallet secret or automatic account discovery |
 
 The gateway uses the Subgraph ID to resolve a current deployment. A Deployment ID is a version-specific IPFS identifier; it is useful when pinning an exact schema version, but is not the value requested by our first preflight. The Graph documents both identifiers and the trade-off between “latest” and pinned versions in [Subgraph ID vs Deployment ID](https://thegraph.com/docs/en/subgraphs/querying/subgraph-id-vs-deployment-id/).
 
@@ -63,9 +64,10 @@ Edit `.env.local` with the key from Studio, the full ID from Explorer and the ma
 GRAPH_API_KEY=keep-this-only-on-your-machine
 GRAPH_SUBGRAPH_ID=D7mapexM5ZsQckLJai2FawTKXJ7CqYGKM8PErnS3cJi9
 GRAPH_CHAIN_ID=8453
+GRAPH_DEMO_ACCOUNT=
 ```
 
-The example ID above is intentionally only a candidate. Replace it if Explorer or the preflight says another deployment is better. Then run:
+Fill `GRAPH_DEMO_ACCOUNT` with a public address that you deliberately selected for the demo. Do not use a seed phrase or funded-wallet private key. The example ID above is intentionally only a candidate. Replace it if Explorer or the preflight says another deployment is better. Then run:
 
 ```sh
 set -a
@@ -75,6 +77,14 @@ npm run graph:preflight
 ```
 
 The output should show `status: "ok"`, the configured ID, an indexed block number/hash/timestamp and no provider indexing-error warning. The API key is sent as a bearer header and is excluded from printed output. If the result is `graphql_error`, `http_error`, `timeout` or `network_error`, keep the source unqualified and report that exact status.
+
+After `_meta` passes, query the selected account's positions:
+
+```sh
+npm run graph:position
+```
+
+This uses a fixed, paginated `userReserves` query. It prints raw token amounts, decimals, collateral/debt fields and block provenance, but never prints the API key. A successful result may still contain `usd_valuation_unavailable`; this deployment exposes `priceInEth`, not a verified USD price, so the evidence policy must not treat the result as a complete USD exposure signal yet.
 
 ## What we need after preflight
 

@@ -15,6 +15,10 @@ AI-authored/assisted files at this checkpoint:
 - docs/ethonline-2026/ROUTES.md
 - docs/ethonline-2026/DATA_ACCESS.md
 - docs/ethonline-2026/GRAPH_SETUP_GUIDE.md
+- docs/ethonline-2026/GRAPH_SOURCE_MANIFEST.md
+- api/app/graph-client.ts
+- scripts/graph-position.ts
+- api/tests/graph-client.test.ts
 - docs/ethonline-2026/PORTAL_GUIDE.md
 - docs/ethonline-2026/DEMO.md
 - docs/ethonline-2026/STATUS.md
@@ -22,7 +26,7 @@ AI-authored/assisted files at this checkpoint:
 - api/tests/graph-preflight.test.ts
 - package.json command registration and `.env.ethonline.example`
 
-The first new code slice is deliberately limited to a read-only Graph `_meta` preflight and its tests; it does not implement the position policy or permit. Running existing tests is not new test implementation. Existing repository files retain their prior provenance.
+The first new code slices are deliberately limited to a read-only Graph `_meta` preflight, a fixed cursor-paginated `UserReserve` adapter and their tests; they do not implement the position policy, permit or UI. Running existing tests is not new test implementation. Existing repository files retain their prior provenance.
 
 ## Founder direction at preparation time
 

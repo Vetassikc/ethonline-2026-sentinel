@@ -1,6 +1,6 @@
 # Sentinel Position Evidence — ETHOnline 2026
 
-Prepared 2026-09-05. This is the working directory for a Continuity extension of the public MIT Sentinel-8004 repository. Preparation is complete; the new live feature is not implemented yet.
+Prepared 2026-09-05 and updated 2026-09-07. This is the working directory for a Continuity extension of the public MIT Sentinel-8004 repository. The read-only Graph position adapter is implemented; the evidence policy and UI remain gated on a qualified valuation source.
 
 ## The product in one sentence
 
@@ -11,8 +11,9 @@ The demo must show a decision changing, not merely a better report. The Graph su
 ## Start here
 
 1. Create the portal project using [PORTAL_GUIDE.md](docs/ethonline-2026/PORTAL_GUIDE.md).
-2. Resolve the first technical dependency in [DATA_ACCESS.md](docs/ethonline-2026/DATA_ACCESS.md): a working live Graph deployment and its actual schema.
-3. Implement milestone 1 of [PLAN.md](docs/ethonline-2026/PLAN.md). Do not build the presentation layer before the data path is proven.
+2. Read [GRAPH_SETUP_GUIDE.md](docs/ethonline-2026/GRAPH_SETUP_GUIDE.md), fill the local Graph values and choose a public `GRAPH_DEMO_ACCOUNT`.
+3. Run `npm run graph:preflight` and then `npm run graph:position`. Review the returned gaps before any policy work.
+4. Continue milestone 1 of [PLAN.md](docs/ethonline-2026/PLAN.md). Do not build the presentation layer before the data path is qualified.
 
 ## Run the existing baseline
 
@@ -33,6 +34,7 @@ Use the local address printed by the server. Existing `/judge` is the old demons
 - [Routes and interfaces](docs/ethonline-2026/ROUTES.md)
 - [Data access and feasibility gate](docs/ethonline-2026/DATA_ACCESS.md)
 - [Graph setup for beginners](docs/ethonline-2026/GRAPH_SETUP_GUIDE.md)
+- [Verified Graph source manifest](docs/ethonline-2026/GRAPH_SOURCE_MANIFEST.md)
 - [Portal instructions and submission drafts](docs/ethonline-2026/PORTAL_GUIDE.md)
 - [Demo and acceptance checklist](docs/ethonline-2026/DEMO.md)
 - [Current status and blockers](docs/ethonline-2026/STATUS.md)

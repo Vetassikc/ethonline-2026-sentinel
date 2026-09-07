@@ -1,4 +1,4 @@
-# Status — September 5, 2026
+# Status — September 7, 2026
 
 ## Verified now
 
@@ -6,15 +6,18 @@
 - Baseline SHA: `dbd9a779bdea5b4f1f93dc13f52ea309c76b7142`.
 - Local branch: `ethonline-2026/position-evidence`.
 - `npm ci --ignore-scripts` completed using the lockfile.
-- `npm test`: 60 baseline tests passed, zero failures/skips.
+- `npm test`: 75 tests passed, zero failures/skips.
 - Dashboard: attendance confirmed and Continuity already selected.
-- Project form inspected, not submitted; creation needs name/category/emoji.
+- ETHGlobal project profile is saved and linked to the public repository; final submission remains disabled.
 - Current Graph target and event deadline rechecked against official pages.
-- `npm run graph:preflight` added with fail-closed missing-config handling and sanitized `_meta` output; it has not been run against a live deployment yet.
+- `npm run graph:preflight` returned live `status: ok` for the configured source, with a fresh indexed block and no provider indexing errors.
+- Schema introspection returned `userReserves`, `UserReserve`, `Reserve`, `Supply` and `Borrow`.
+- `api/app/graph-client.ts` and `npm run graph:position` now perform a fixed, bounded, cursor-paginated read-only account query with sanitized errors, raw units, block provenance and explicit gaps.
+- A sampled public account query returned two positions and completed pagination without indexing errors.
 
 ## Not done
 
-No live Graph adapter, new permit signature, AI tool integration or evidence UI. No live source/deployment/account chosen or verified. The ETHGlobal project profile is now saved and linked to the public repository; final submission remains disabled. No hosting deployment, wallet transaction or outbound message.
+No evidence policy, new permit signature, AI tool integration or evidence UI. The configured source is conditionally viable for position observations, but not yet qualified for a USD-based permit policy: it exposes `priceInEth` and the sampled oracle timestamps were stale. No public demo account is frozen in the repository. No hosting deployment, wallet transaction or outbound message.
 
 Existing test success is baseline regression evidence only. It does not validate the proposed feature, live credentials, source correctness, current deployments or sponsor qualification.
 
@@ -24,7 +27,7 @@ Existing test success is baseline regression evidence only. It does not validate
 
 ## Next development action
 
-Complete PLAN milestone 1: select a real Graph source and prove account-level data plus block freshness. Required founder action: manage Graph account/key access locally if no usable key is available. Never paste secrets into chat.
+Complete PLAN milestone 1: choose a public demo account and a separately attributed, freshness-checked valuation source (or explicitly choose a non-USD policy signal). Required founder action: manage Graph account/key access locally and review the live output. Never paste secrets into chat.
 
 ## Authority boundary
 
