@@ -75,9 +75,10 @@ separate recorded natural-language trace and remains an open gate.
 
 ## Remaining gates
 
-1. Refresh one provider-available live browser run without exposing account or
-   balance data. A later repeated probe hit the public Base RPC rate limit and
-   correctly failed closed.
+1. If needed, capture a provider-stable successful paper-executor refresh
+   without exposing account or balance data. Live browser evaluation and permit
+   verification now pass with a server-configured HTTPS Base RPC, while the
+   fresh executor has correctly failed closed on source/headroom changes.
 2. Decide whether the event value justifies configuring a real external AI/tool
    client. If so, record the exact request, selected tool call and explanation.
 3. Have the founder review the token-unit policy, live outputs, limitations,

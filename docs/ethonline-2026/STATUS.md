@@ -31,6 +31,10 @@
   `BASE_RPC_URL` override, which must be HTTPS and is chain-checked as `8453`.
   Sanitized metadata exposes only its origin, never a credential-bearing
   path/query.
+- A configured HTTPS Base RPC override at `https://base-rpc.publicnode.com`
+  passed the server configuration check and returned chain ID `8453`. A fresh
+  Graph preflight at `2026-09-07T20:43:26Z` returned block `51012228`, indexed
+  age `3` seconds and no indexing errors.
 - Permit issuance, independent verification, fresh-condition checks and
   one-use paper execution are implemented behind bounded server routes. State
   is in memory and expires; durable authorization is not claimed.
@@ -43,18 +47,26 @@
 
 ## FACT — known source limitation
 
-Fresh live acceptance on September 7 at `2026-09-07T20:29:43Z`: Graph
-preflight returned `status: ok` at indexed block `51011817`, indexed age
-`2` seconds and `hasIndexingErrors: false`. The exact exposure-tool request
-then returned CLI-equivalent status `503`, `DENY`, no evaluation reference and
-the sanitized reason `rpc_rate_limited` against the default public Base RPC
-endpoint. The adapter returned a blocked, non-authorizing result instead of
-reusing an old success or silently switching to a fixture.
+The default public Base RPC still returned the sanitized `rpc_rate_limited`
+category during the earlier refresh. With the configured HTTPS override, the
+exact exposure-tool request returned `status: 200`, `LIVE`, two attributable
+paths and `ALLOW_WITH_DOWNSIZE` for the `2.000000000000000000 wstETH` request;
+the recorded allowed amount was approximately
+`0.999987494274097461 wstETH`.
 
-A provider-available live browser positive flow is therefore not claimed by
-this status file. The bounded custom-provider path is implemented and locally
-covered; a founder must place a chosen Base Mainnet HTTPS endpoint in the
-ignored `BASE_RPC_URL` configuration before refreshing live acceptance.
+A fresh browser evaluation then rendered the live Graph/RPC same-block graph,
+and direct/Aave path inspection showed the shared wstETH dependency. The
+browser issued and independently verified a demo permit successfully. A
+second browser request for `0.500000000000000000 wstETH` returned `ALLOW`, and
+its permit verification passed all executable checks. The cooperating paper
+executor deliberately remained fail-closed during fresh refreshes: the first
+permit returned `CURRENT_HEADROOM_INSUFFICIENT`, and the second returned
+`CURRENT_SOURCE_UNAVAILABLE` with HTTP `409`. No live transaction was sent.
+
+The live evaluation and permit gates are therefore refreshed, but a
+provider-stable successful paper-executor run is not claimed by this status
+file. The custom provider's intermittent historical-read consistency remains
+an explicit acceptance limitation.
 
 ## UNKNOWN or explicitly not delivered
 
@@ -65,6 +77,8 @@ ignored `BASE_RPC_URL` configuration before refreshing live acceptance.
 - No genuine external natural-language AI/MCP invocation has been exercised.
   The local restricted CLI is a tool contract and regression boundary, not
   evidence of model selection or MCP connectivity.
+- A successful live paper-executor refresh has not been recorded; the observed
+  `409` outcomes remained non-authorizing and did not submit a transaction.
 - Evaluation references, pending-account locks and consumed nonces are
   process-local in-memory state and disappear on restart.
 - No production deployment, wallet transaction, live trade, portal
@@ -83,10 +97,9 @@ dependency mutation was performed.
 
 ## Next bounded actions
 
-1. If live positive evidence is still worth the event scope, configure a
-   chosen Base Mainnet HTTPS RPC endpoint through server-only `BASE_RPC_URL`,
-   then refresh the source/tool run and record only sanitized status, block,
-   path count and policy fields.
+1. If full live paper-executor evidence is still worth the event scope, use a
+   provider with stable historical reads and repeat the bounded browser flow;
+   do not weaken the fresh-condition gate or fall back to a fixture.
 2. If desired, configure and record a genuine external AI/tool trace without
    granting the model control of account, policy, URLs, signing or execution.
 3. Founder reviews this narrow action policy and decides whether further

@@ -49,8 +49,12 @@ claim. The live source manifest and CLI acceptance must be reported separately.
   one-use nonce, concurrency and fresh-condition denial.
 - [x] The full narrow synthetic browser flow and responsive layout were
   exercised without configured account data in the capture.
-- [ ] A provider-available live browser positive run remains to be refreshed
-  after the public RPC rate limit clears.
+- [x] A provider-available live browser evaluation and permit verification were
+  refreshed with a server-configured HTTPS Base RPC; direct and Aave paths
+  were inspected against the same live block.
+- [ ] A provider-stable successful fresh paper-executor run remains
+  unrecorded. The observed live refreshes returned non-authorizing `409`
+  outcomes (`CURRENT_HEADROOM_INSUFFICIENT` or `CURRENT_SOURCE_UNAVAILABLE`).
 - [ ] A genuine external natural-language AI/MCP invocation is not recorded.
 - [ ] Founder review, dependency review, clean-install reproduction, media,
   deployment and submission remain separate gates.

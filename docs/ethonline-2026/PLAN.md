@@ -80,8 +80,9 @@ to use a stale or synthetic live result.
 
 - [x] Reconcile public docs, continuity and AI attribution with actual files,
   commits, tests and known limitations.
-- [ ] Refresh a provider-available live browser run and record only sanitized
-  acceptance fields.
+- [x] Refresh a provider-available live browser evaluation and permit run and
+  record only sanitized acceptance fields. A successful fresh paper execution
+  remains a separate unchecked gate because the provider refresh failed closed.
 - [ ] Review the exact wstETH-unit cap, supported action and live outputs in the
   founder's own voice.
 - [ ] Review current dependency advisories before proposing deployment.
