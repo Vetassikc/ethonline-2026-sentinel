@@ -108,6 +108,15 @@ test("buildExposureGraph converges direct and Aave paths on one asset", () => {
   }
 });
 
+test("buildExposureGraph fails closed when the Graph wstETH UserReserve row is removed", () => {
+  const graph = graphEvidence();
+  graph.observations = [];
+
+  const result = buildExposureGraph({ graph, rpc: rpcSnapshot() });
+
+  assert.deepEqual(result, { status: "error", reason: "missing_wsteth_observation" });
+});
+
 test("buildExposureGraph rejects a Graph/RPC block mismatch", () => {
   const result = buildExposureGraph({
     graph: graphEvidence(),
