@@ -86,6 +86,26 @@ npm run graph:position
 
 This uses a fixed, paginated `userReserves` query. It prints raw token amounts, decimals, collateral/debt fields and block provenance, but never prints the API key. A successful result may still contain `usd_valuation_unavailable`; this deployment exposes `priceInEth`, not a verified USD price, so the evidence policy must not treat the result as a complete USD exposure signal yet.
 
+### If the result says `missing_configuration: GRAPH_DEMO_ACCOUNT`
+
+The project does not load `.env.local` automatically. Run the command from the repository directory and export the file in the same shell session:
+
+```sh
+cd /Users/vitaliiradionov/Code/ethonline-2026-sentinel
+set -a
+source .env.local
+set +a
+npm run graph:position
+```
+
+Alternatively, set the address for one command only:
+
+```sh
+GRAPH_DEMO_ACCOUNT=0xYOUR_PUBLIC_ADDRESS npm run graph:position
+```
+
+Do not use `GRAPH_DEMO_ACCOUNT=...` on a line by itself without `export`; a non-exported shell variable is not passed to the Node process. If the command changes to `status: "ok"` with `observations: 0`, the address was loaded successfully but has no indexed `UserReserve` rows in this deployment; choose another deliberately public demo account rather than treating an empty portfolio as evidence.
+
 ## What we need after preflight
 
 The preflight only checks `_meta`; it does not prove account positions. The next query must identify:
