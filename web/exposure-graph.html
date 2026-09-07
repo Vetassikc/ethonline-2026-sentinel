@@ -3,13 +3,273 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Source-attributed wstETH exposure graph and bounded paper execution demo." />
+    <link rel="icon" href="data:," />
     <title>Sentinel Exposure Graph</title>
+    <link rel="stylesheet" href="/web/styles.css" />
   </head>
-  <body>
-    <main>
-      <h1>Sentinel Exposure Graph</h1>
-      <p>Bounded wstETH exposure evidence, policy and paper execution.</p>
-      <pre id="exposure-status">Loading exposure config…</pre>
+  <body class="exposure-page">
+    <main class="page exposure-shell">
+      <header class="hero exposure-hero">
+        <a class="hub-back-link" href="/">← Back to submission hub</a>
+        <div class="hero-panel exposure-hero-panel">
+          <div class="exposure-hero-heading">
+            <div>
+              <p class="eyebrow">Sentinel-8004 · Base · source-attributed guardrail</p>
+              <h1>Sentinel Exposure Graph</h1>
+              <p class="intro">
+                A bounded wstETH paper-purchase flow that traces direct holdings and
+                Aave supply claims to one asset before a signed permit can be used.
+              </p>
+            </div>
+            <div class="exposure-badge-stack" aria-label="Demo mode badges">
+              <span class="status-pill status-pill-neutral" id="exposure-live-badge">LIVE</span>
+              <span class="status-pill status-pill-neutral" id="exposure-replay-badge">REPLAY</span>
+            </div>
+          </div>
+          <div class="hero-proof-strip exposure-proof-strip">
+            <div class="proof-step">
+              <span class="proof-step-index">01</span>
+              <p>Graph qualifies the configured Base account and shared dependency paths.</p>
+            </div>
+            <div class="proof-step">
+              <span class="proof-step-index">02</span>
+              <p>RPC checks the same block and normalizes the Aave supply relation.</p>
+            </div>
+            <div class="proof-step">
+              <span class="proof-step-index">03</span>
+              <p>Policy derives a bounded amount; permit and paper execution stay gated.</p>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div id="exposure-status" class="exposure-status" role="status" aria-live="polite">
+        Loading server-owned exposure configuration…
+      </div>
+
+      <section id="exposure-request-panel" class="card exposure-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="section-label">Request / operator boundary</p>
+            <h2>Ask for one bounded exposure amount</h2>
+            <p class="panel-summary">
+              The browser submits only the fixed purchase shape. Account, chain,
+              data sources, cap and signer remain server-owned.
+            </p>
+          </div>
+          <span class="status-pill status-pill-neutral">READ ONLY INPUT</span>
+        </div>
+        <form id="exposure-request-form" class="exposure-request-form">
+          <div class="exposure-form-grid">
+            <label class="exposure-field">
+              <span>Action</span>
+              <input type="text" value="BUY_EXPOSURE" readonly />
+            </label>
+            <label class="exposure-field">
+              <span>Asset / unit</span>
+              <input type="text" value="wstETH / wstETH" readonly />
+            </label>
+            <label class="exposure-field exposure-field-wide" for="exposure-requested-units">
+              <span>Requested units</span>
+              <input
+                id="exposure-requested-units"
+                name="requested_units"
+                inputmode="decimal"
+                autocomplete="off"
+                value="2.000000000000000000"
+                aria-describedby="exposure-request-help"
+              />
+              <small id="exposure-request-help">Up to 10 wstETH, with at most 18 decimal places.</small>
+            </label>
+            <div class="exposure-field exposure-readonly-field">
+              <span>Server dependency cap</span>
+              <strong id="exposure-cap">not loaded</strong>
+              <small id="exposure-config-source">Waiting for server configuration.</small>
+            </div>
+          </div>
+          <div class="control-row exposure-control-row">
+            <button id="exposure-evaluate" type="submit">Evaluate exposure</button>
+            <span id="exposure-config-state" class="field-note">No decision has been requested.</span>
+          </div>
+        </form>
+      </section>
+
+      <section id="exposure-graph-panel" class="card exposure-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="section-label">Evidence graph</p>
+            <h2>One asset, two attributable paths</h2>
+            <p class="panel-summary">
+              Click either path to inspect the source field, contract read, same-block
+              provenance, unit transformation and visible gaps.
+            </p>
+          </div>
+          <span id="exposure-graph-mode" class="status-pill status-pill-neutral">LIVE SOURCE PENDING</span>
+        </div>
+        <div class="exposure-graph-layout">
+          <div class="exposure-svg-frame">
+            <svg
+              id="exposure-graph-svg"
+              class="exposure-graph-svg"
+              viewBox="0 0 820 360"
+              role="img"
+              aria-label="Configured account flowing through direct and Aave paths into wstETH"
+            >
+              <defs>
+                <marker id="exposure-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" class="exposure-arrow" />
+                </marker>
+              </defs>
+              <g id="graph-path-direct" class="exposure-graph-path" data-path-kind="direct_holding" role="button" tabindex="0" aria-label="Inspect direct holding path" aria-disabled="true">
+                <rect class="exposure-graph-hit-area" x="196" y="60" width="448" height="120" rx="12" />
+                <path class="exposure-graph-edge" d="M 196 150 C 245 150 244 98 294 98" marker-end="url(#exposure-arrow)" />
+                <path class="exposure-graph-edge" d="M 472 98 C 555 98 570 174 644 174" marker-end="url(#exposure-arrow)" />
+              </g>
+              <g id="graph-path-aave" class="exposure-graph-path" data-path-kind="aave_supply" role="button" tabindex="0" aria-label="Inspect Aave supply path" aria-disabled="true">
+                <rect class="exposure-graph-hit-area" x="196" y="180" width="448" height="120" rx="12" />
+                <path class="exposure-graph-edge" d="M 196 210 C 245 210 244 258 294 258" marker-end="url(#exposure-arrow)" />
+                <path class="exposure-graph-edge" d="M 472 258 C 555 258 570 184 644 184" marker-end="url(#exposure-arrow)" />
+              </g>
+              <g class="exposure-graph-node exposure-graph-node-account">
+                <rect x="28" y="132" width="168" height="96" rx="14" />
+                <text x="112" y="165" text-anchor="middle" class="exposure-node-kicker">SERVER CONFIGURED</text>
+                <text x="112" y="190" text-anchor="middle" id="graph-account-label">account</text>
+                <text x="112" y="211" text-anchor="middle" class="exposure-node-meta">Base · chain 8453</text>
+              </g>
+              <g class="exposure-graph-node">
+                <rect x="294" y="54" width="178" height="88" rx="14" />
+                <text x="383" y="88" text-anchor="middle" class="exposure-node-kicker">DIRECT PATH</text>
+                <text x="383" y="113" text-anchor="middle">wstETH holding</text>
+              </g>
+              <g class="exposure-graph-node">
+                <rect x="294" y="214" width="178" height="88" rx="14" />
+                <text x="383" y="248" text-anchor="middle" class="exposure-node-kicker">AAVE V3 BASE</text>
+                <text x="383" y="273" text-anchor="middle">supply position</text>
+              </g>
+              <g class="exposure-graph-node exposure-graph-node-asset">
+                <rect x="644" y="134" width="148" height="88" rx="14" />
+                <text x="718" y="168" text-anchor="middle" class="exposure-node-kicker">SHARED ASSET</text>
+                <text x="718" y="193" text-anchor="middle">wstETH</text>
+              </g>
+            </svg>
+            <div class="exposure-graph-legend" aria-label="Graph legend">
+              <span><i class="legend-swatch legend-swatch-direct"></i> direct holding</span>
+              <span><i class="legend-swatch legend-swatch-aave"></i> Aave supply claim</span>
+              <span><i class="legend-swatch legend-swatch-shared"></i> shared dependency</span>
+            </div>
+          </div>
+          <aside id="exposure-path-detail" class="exposure-path-detail" aria-live="polite">
+            <p class="section-label">Selected path</p>
+            <h3 id="exposure-path-title">No source path selected</h3>
+            <p id="exposure-path-summary" class="panel-summary">Evaluate the bounded request, then select a highlighted path.</p>
+            <dl class="exposure-detail-list">
+              <div><dt>Units</dt><dd id="exposure-path-quantity">not resolved</dd></div>
+              <div><dt>Source field</dt><dd id="exposure-path-source">not resolved</dd></div>
+              <div><dt>Contract / method</dt><dd id="exposure-path-contract">not resolved</dd></div>
+              <div><dt>Transformation</dt><dd id="exposure-path-transformation">not resolved</dd></div>
+              <div><dt>Same-block evidence</dt><dd id="exposure-path-block">not resolved</dd></div>
+              <div><dt>Gap state</dt><dd id="exposure-path-gaps">not resolved</dd></div>
+            </dl>
+          </aside>
+        </div>
+        <div class="exposure-source-strip">
+          <span><strong>Graph/RPC source:</strong> <span id="exposure-source-state">not loaded</span></span>
+          <span><strong>Indexed block:</strong> <span id="exposure-source-block">not resolved</span></span>
+          <span><strong>Graph gaps:</strong> <span id="exposure-source-gaps">not resolved</span></span>
+        </div>
+      </section>
+
+      <section id="exposure-decision-panel" class="card exposure-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="section-label">Policy decision</p>
+            <h2>Headroom is the authorization boundary</h2>
+            <p id="exposure-decision-note" class="panel-summary">No live evaluation has been returned.</p>
+          </div>
+          <span id="exposure-verdict" class="status-pill status-pill-neutral">PENDING</span>
+        </div>
+        <div class="metric-strip exposure-metrics">
+          <div class="metric-item"><dt>Requested</dt><dd id="exposure-metric-requested">—</dd></div>
+          <div class="metric-item"><dt>Current gross</dt><dd id="exposure-metric-gross">—</dd></div>
+          <div class="metric-item"><dt>Dependency cap</dt><dd id="exposure-metric-cap">—</dd></div>
+          <div class="metric-item"><dt>Headroom</dt><dd id="exposure-metric-headroom">—</dd></div>
+          <div class="metric-item"><dt>Allowed</dt><dd id="exposure-metric-allowed">—</dd></div>
+          <div class="metric-item"><dt>Binding reason</dt><dd id="exposure-metric-binding">—</dd></div>
+        </div>
+        <div class="exposure-decision-footer">
+          <span><strong>Reason codes:</strong> <span id="exposure-reason-codes">not resolved</span></span>
+          <span><strong>Authorized execution amount:</strong> <span id="exposure-authorized-units">not resolved</span></span>
+        </div>
+      </section>
+
+      <div class="exposure-operation-grid">
+        <section id="exposure-permit-panel" class="card exposure-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="section-label">Permit boundary</p>
+              <h2>Bind the result to a demo signer</h2>
+            </div>
+            <span class="status-pill status-pill-neutral">DEMO SIGNER</span>
+          </div>
+          <p class="panel-summary">
+            The permit binds the account, policy version, graph hash, snapshot block,
+            cap and authorized units. It is demo-only material, not custody.
+          </p>
+          <div class="control-row exposure-control-row">
+            <button id="exposure-issue-permit" type="button" disabled>Issue permit</button>
+            <button id="exposure-verify-permit" type="button" disabled>Verify permit</button>
+          </div>
+          <div id="exposure-verification-checks" class="exposure-check-list" aria-live="polite"></div>
+          <pre id="exposure-permit-output" class="exposure-output">No permit issued.</pre>
+        </section>
+
+        <section id="exposure-execution-panel" class="card exposure-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="section-label">Execution boundary</p>
+              <h2>Paper execute after fresh checks</h2>
+            </div>
+            <span class="status-pill status-pill-neutral">PAPER EXECUTOR</span>
+          </div>
+          <p class="panel-summary">
+            Paper execution refreshes the source, re-checks headroom and consumes a
+            nonce only after all conditions remain valid.
+          </p>
+          <p class="field-note"><strong>Request sent to executor:</strong> <span id="exposure-execution-request">not authorized</span></p>
+          <div class="control-row exposure-control-row">
+            <button id="exposure-paper-execute" type="button" disabled>Paper execute</button>
+          </div>
+          <pre id="exposure-execution-output" class="exposure-output">Waiting for a verified permit.</pre>
+        </section>
+      </div>
+
+      <section id="exposure-replay-panel" class="card exposure-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="section-label">Replay boundary</p>
+            <h2>Show a non-current exhausted-headroom replay</h2>
+            <p class="panel-summary">
+              Replay is derived from the stored evaluation, never calls the live provider,
+              and is labeled separately from current evidence.
+            </p>
+          </div>
+          <span class="status-pill status-pill-neutral">REPLAY</span>
+        </div>
+        <div class="control-row exposure-control-row">
+          <button id="exposure-run-replay" type="button" disabled>Run labeled replay</button>
+          <span id="exposure-replay-verdict" class="field-note">No replay requested.</span>
+        </div>
+        <pre id="exposure-replay-output" class="exposure-output">Replay is available after a live evaluation reference exists.</pre>
+      </section>
+
+      <footer class="exposure-footer">
+        <p>
+          This public screen demonstrates source attribution, a policy-based signal and
+          a paper executor. It does not provide investment advice, USD valuation or a
+          live transaction submission.
+        </p>
+      </footer>
     </main>
     <script type="module" src="/web/exposure-graph.js"></script>
   </body>
