@@ -55,18 +55,26 @@ function reserveRow(overrides: Record<string, unknown> = {}) {
     user: { id: ACCOUNT },
     reserve: {
       id: "0xreserve1",
-      underlyingAsset: "0xasset1",
-      symbol: "USDC",
-      name: "USD Coin",
-      decimals: 6,
+      underlyingAsset: "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+      symbol: "wstETH",
+      name: "Wrapped liquid staked Ether 2.0",
+      decimals: 18,
+      pool: { pool: "0xa238dd80c259a72e81d7e4664a9801593f98d1c5" },
+      aToken: {
+        id: "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+        underlyingAssetAddress: "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+        underlyingAssetDecimals: 18,
+      },
+      liquidityIndex: "1000000000000000000000000000",
       price: {
-        priceInEth: "99990000",
-        priceSource: "0xoracle1",
+        priceInEth: "1",
+        priceSource: "0x0",
         lastUpdateTimestamp: 1_788_767_450,
       },
     },
     usageAsCollateralEnabledOnUser: true,
     currentATokenBalance: "227443188",
+    scaledATokenBalance: "30000000000000000",
     currentTotalDebt: "6163337934",
     currentStableDebt: "0",
     currentVariableDebt: "6163337934",
@@ -100,6 +108,10 @@ test("buildPositionQuery exposes a fixed account-position query and bounded vari
 
   assert.match(request.query, /userReserves/);
   assert.match(request.query, /currentTotalDebt/);
+  assert.match(request.query, /scaledATokenBalance/);
+  assert.match(request.query, /aToken \{/);
+  assert.match(request.query, /liquidityIndex/);
+  assert.match(request.query, /pool \{/);
   assert.match(request.query, /_meta/);
   assert.deepEqual(request.variables, {
     account: ACCOUNT,
@@ -130,8 +142,16 @@ test("runGraphPositionQuery returns normalized live observations and indexed pro
     assert.equal(result.subject.account, ACCOUNT);
     assert.equal(result.subject.chain_id, 8453);
     assert.equal(result.observations.length, 1);
-    assert.equal(result.observations[0]?.asset.symbol, "USDC");
+    assert.equal(result.observations[0]?.asset.symbol, "wstETH");
     assert.equal(result.observations[0]?.supplied_raw, "227443188");
+    assert.equal(result.observations[0]?.scaled_supplied_raw, "30000000000000000");
+    assert.deepEqual(result.observations[0]?.a_token, {
+      address: "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+      underlying_asset: "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+      decimals: 18,
+    });
+    assert.equal(result.observations[0]?.pool_address, "0xa238dd80c259a72e81d7e4664a9801593f98d1c5");
+    assert.equal(result.observations[0]?.supply_index_raw, "1000000000000000000000000000");
     assert.equal(result.observations[0]?.debt_raw, "6163337934");
     assert.equal(result.source.indexed_block.number, META.block.number);
     assert.deepEqual(result.gaps, ["usd_valuation_unavailable"]);
@@ -304,5 +324,37 @@ test("runGraphPositionQuery preserves a missing amount as null instead of invent
   if (result.status === "ok") {
     assert.equal(result.observations[0]?.supplied_raw, null);
     assert.equal(result.gaps.includes("malformed_position_amount"), true);
+  }
+});
+
+test("runGraphPositionQuery exposes missing exposure relations as stable gaps", async () => {
+  const row = reserveRow({
+    scaledATokenBalance: undefined,
+    reserve: {
+      ...reserveRow().reserve,
+      pool: null,
+      aToken: null,
+      liquidityIndex: undefined,
+    },
+  });
+  const result = await runGraphPositionQuery({
+    apiKey: "secret-test-key",
+    subgraphId: SUBGRAPH_ID,
+    chainId: 8453,
+    account: ACCOUNT,
+    now: new Date(1_788_767_498_000),
+    fetchImpl: async () => response([row]),
+  });
+
+  assert.equal(result.status, "ok");
+  if (result.status === "ok") {
+    assert.equal(result.observations[0]?.scaled_supplied_raw, null);
+    assert.equal(result.observations[0]?.a_token, null);
+    assert.equal(result.observations[0]?.pool_address, null);
+    assert.equal(result.observations[0]?.supply_index_raw, null);
+    assert.equal(result.gaps.includes("missing_scaled_supply"), true);
+    assert.equal(result.gaps.includes("missing_a_token_relation"), true);
+    assert.equal(result.gaps.includes("missing_pool_address"), true);
+    assert.equal(result.gaps.includes("missing_supply_index"), true);
   }
 });

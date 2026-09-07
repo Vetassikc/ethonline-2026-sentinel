@@ -38,6 +38,13 @@ function graphResponse() {
                 symbol: "USDC",
                 name: "USD Coin",
                 decimals: 6,
+                pool: { pool: "0xa238dd80c259a72e81d7e4664a9801593f98d1c5" },
+                aToken: {
+                  id: "0x0000000000000000000000000000000000000011",
+                  underlyingAssetAddress: "0x0000000000000000000000000000000000000001",
+                  underlyingAssetDecimals: 6,
+                },
+                liquidityIndex: "1000000000000000000000000000",
                 price: {
                   priceInEth: "1000000000000000",
                   priceSource: "0xoracle1",
@@ -45,6 +52,7 @@ function graphResponse() {
                 },
               },
               usageAsCollateralEnabledOnUser: true,
+              scaledATokenBalance: "1000000",
               currentATokenBalance: "1000000",
               currentTotalDebt: "0",
               currentStableDebt: "0",

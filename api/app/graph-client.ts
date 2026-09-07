@@ -30,6 +30,13 @@ const POSITION_QUERY_FIRST_PAGE = `
         symbol
         name
         decimals
+        pool { pool }
+        aToken {
+          id
+          underlyingAssetAddress
+          underlyingAssetDecimals
+        }
+        liquidityIndex
         price {
           priceInEth
           priceSource
@@ -72,6 +79,13 @@ const POSITION_QUERY_CURSOR_PAGE = `
         symbol
         name
         decimals
+        pool { pool }
+        aToken {
+          id
+          underlyingAssetAddress
+          underlyingAssetDecimals
+        }
+        liquidityIndex
         price {
           priceInEth
           priceSource
@@ -110,6 +124,13 @@ type GraphPositionRow = {
     symbol?: string;
     name?: string;
     decimals?: number | string;
+    pool?: { pool?: string } | null;
+    aToken?: {
+      id?: string;
+      underlyingAssetAddress?: string;
+      underlyingAssetDecimals?: number | string;
+    } | null;
+    liquidityIndex?: string;
     price?: {
       priceInEth?: string;
       priceSource?: string;
@@ -160,6 +181,14 @@ export type GraphPositionObservation = {
     price_age_seconds: number | null;
   };
   supplied_raw: string | null;
+  scaled_supplied_raw: string | null;
+  a_token: {
+    address: string;
+    underlying_asset: string;
+    decimals: number;
+  } | null;
+  pool_address: string | null;
+  supply_index_raw: string | null;
   debt_raw: string | null;
   stable_debt_raw: string | null;
   variable_debt_raw: string | null;
@@ -309,6 +338,12 @@ function parseObservation(
   const name = typeof reserve?.name === "string" ? reserve.name : null;
   const decimals = parseSafeInteger(reserve?.decimals);
   const supplied = parseSignedIntegerString(row.currentATokenBalance);
+  const scaledSupplied = parseSignedIntegerString(row.scaledATokenBalance);
+  const aTokenAddress = normalizeAddress(reserve?.aToken?.id);
+  const aTokenUnderlying = normalizeAddress(reserve?.aToken?.underlyingAssetAddress);
+  const aTokenDecimals = parseSafeInteger(reserve?.aToken?.underlyingAssetDecimals);
+  const poolAddress = normalizeAddress(reserve?.pool?.pool);
+  const supplyIndex = parseSignedIntegerString(reserve?.liquidityIndex);
   const debt = parseSignedIntegerString(row.currentTotalDebt);
   const stableDebt = parseSignedIntegerString(row.currentStableDebt);
   const variableDebt = parseSignedIntegerString(row.currentVariableDebt);
@@ -323,6 +358,17 @@ function parseObservation(
   if (supplied === null || debt === null || stableDebt === null || variableDebt === null) {
     addGap(gaps, "malformed_position_amount");
   }
+  if (scaledSupplied === null) addGap(gaps, "missing_scaled_supply");
+  if (scaledSupplied?.startsWith("-")) addGap(gaps, "negative_scaled_supply_value");
+  if (!aTokenAddress || !aTokenUnderlying || aTokenDecimals === null || aTokenDecimals > 255) {
+    addGap(gaps, "missing_a_token_relation");
+  }
+  if (aTokenUnderlying && aTokenUnderlying !== reserveAddress) {
+    addGap(gaps, "a_token_underlying_mismatch");
+  }
+  if (!poolAddress) addGap(gaps, "missing_pool_address");
+  if (supplyIndex === null) addGap(gaps, "missing_supply_index");
+  if (supplyIndex?.startsWith("-")) addGap(gaps, "negative_supply_index");
   if (supplied?.startsWith("-")) addGap(gaps, "negative_supply_value");
   if (debt?.startsWith("-")) addGap(gaps, "negative_debt_value");
   if (stableDebt?.startsWith("-")) addGap(gaps, "negative_stable_debt_value");
@@ -363,6 +409,16 @@ function parseObservation(
       price_age_seconds: priceAgeSeconds,
     },
     supplied_raw: supplied,
+    scaled_supplied_raw: scaledSupplied,
+    a_token: aTokenAddress && aTokenUnderlying && aTokenDecimals !== null && aTokenDecimals <= 255
+      ? {
+        address: aTokenAddress,
+        underlying_asset: aTokenUnderlying,
+        decimals: aTokenDecimals,
+      }
+      : null,
+    pool_address: poolAddress,
+    supply_index_raw: supplyIndex,
     debt_raw: debt,
     stable_debt_raw: stableDebt,
     variable_debt_raw: variableDebt,
