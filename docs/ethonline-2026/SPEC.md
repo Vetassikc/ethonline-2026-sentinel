@@ -1,6 +1,6 @@
 # Position Evidence v1 — implementation specification
 
-Status: proposed design, not implemented. Read [DATA_ACCESS.md](DATA_ACCESS.md) before selecting protocol-specific fields.
+Status: the normalization and hashing slice is implemented; evidence policy, permit and UI remain proposed. Read [DATA_ACCESS.md](DATA_ACCESS.md) before selecting protocol-specific fields.
 
 ## User story
 
@@ -22,11 +22,11 @@ The model does not choose policy limits, invent missing values, sign arbitrary p
 
 ## Evidence envelope: position_evidence.v1
 
-Required fields: `schemaVersion`, `subject` (chain ID, account, protocol deployment), `query` (template ID/version, variables hash), `source` (provider, deployment ID, indexed block number/hash/timestamp, fetched-at time, indexing-error status), `observations`, `gaps`, and `mode` (`live` or `fixture`). Monetary quantities use decimal strings with explicit units; do not use floating-point arithmetic for authorization.
+Required fields in this repository's public JSON contract: `schema_version`, `subject` (chain ID, account, protocol deployment), `query` (template ID/version, variables hash), `source` (provider, deployment ID, indexed block number/hash/timestamp, fetched-at time, indexing-error status), `observations`, `gaps`, `quality`, `mode` (`live` or `fixture`) and `evidence_hash`. Monetary quantities use decimal strings with explicit units; do not use floating-point arithmetic for authorization.
 
 Each observation identifies its field, source response path, value, units and block provenance. Each gap has a stable reason code. Account, chain and deployment must match the request. A null response is not a zero balance. A missing page is not a complete portfolio. Reject partial, malformed or unbounded paginated data for required signals.
 
-`evidenceHash` is computed over a defined canonical payload excluding the hash field itself. Pin serialization rules: recursively sorted object keys, preserved array order, UTF-8, no undefined/NaN/Infinity, amounts as strings. Use keccak256 for compatibility with EIP-712 bytes32. Hashes prove payload consistency, not source truth, completeness or safety.
+`evidence_hash` is computed over a defined canonical payload excluding the hash field itself. Pin serialization rules: recursively sorted object keys, preserved array order, UTF-8, no undefined/NaN/Infinity, amounts as strings. Use keccak256 for compatibility with EIP-712 bytes32. Hashes prove payload consistency, not source truth, completeness or safety.
 
 Freshness uses the indexed block timestamp, not merely the time of HTTP retrieval. Verify timestamp/block correspondence using source metadata or a read-only RPC lookup of the same block. Unknown timestamp, excessive index lag, indexing errors or inconsistent block identity are gaps. Initial maximum evidence age: 300 seconds, configurable and versioned; validate this against the chosen deployment before freezing it. Clock in tests is injected; future source times outside a documented tolerance fail closed.
 
@@ -37,6 +37,12 @@ Input: validated existing TradeIntent, normalized evidence, explicit policy vers
 Initial rule family: fresh known position exposure plus configured exposure ceiling determines remaining permitted notional. The source must provide the quantities and valuation provenance required to calculate that exposure. Otherwise DENY; do not invent a price or substitute protocol-wide TVL for account exposure. Exact protocol field mapping and valuation equation are frozen only after the source feasibility gate.
 
 Negative cases include missing data, stale evidence, source errors, account/chain mismatch, unsupported market, negative/invalid amount, incomplete pagination and unknown valuation. All must deny. A successful refresh changes the evidence payload/hash; it does not guarantee ALLOW if exposure still exceeds policy.
+
+## Implemented evidence slice
+
+`api/app/position-evidence.ts` converts the live Graph adapter result into a deterministic `position_evidence.v1` envelope. It preserves raw integer amounts, adds fixed-scale decimal strings without floating-point arithmetic, records query/source provenance and response paths, carries explicit gaps, and computes a `keccak256` `evidence_hash` over the canonical payload without the hash field. A stale indexed block, missing block metadata, indexing error, incomplete pagination, empty observations, subject mismatch, malformed amount or unavailable USD valuation produces a `DENY` quality verdict. Missing amounts remain `null`; they are never converted to zero.
+
+The current live source is expected to remain `DENY` until a separately attributed, freshness-checked valuation source is qualified. This is an intentional fail-closed result, not a claim that the account is unsafe.
 
 ## Permit and verifier
 

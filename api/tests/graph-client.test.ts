@@ -288,3 +288,21 @@ test("runGraphPositionQuery marks an old oracle price as a visible gap", async (
     assert.equal(result.gaps.includes("stale_oracle_price"), true);
   }
 });
+
+test("runGraphPositionQuery preserves a missing amount as null instead of inventing zero", async () => {
+  const row = reserveRow({ currentATokenBalance: undefined });
+  const result = await runGraphPositionQuery({
+    apiKey: "secret-test-key",
+    subgraphId: SUBGRAPH_ID,
+    chainId: 8453,
+    account: ACCOUNT,
+    now: new Date(1_788_767_498_000),
+    fetchImpl: async () => response([row]),
+  });
+
+  assert.equal(result.status, "ok");
+  if (result.status === "ok") {
+    assert.equal(result.observations[0]?.supplied_raw, null);
+    assert.equal(result.gaps.includes("malformed_position_amount"), true);
+  }
+});

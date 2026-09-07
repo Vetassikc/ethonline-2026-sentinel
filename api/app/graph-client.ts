@@ -159,10 +159,10 @@ export type GraphPositionObservation = {
     price_updated_at: number | null;
     price_age_seconds: number | null;
   };
-  supplied_raw: string;
-  debt_raw: string;
-  stable_debt_raw: string;
-  variable_debt_raw: string;
+  supplied_raw: string | null;
+  debt_raw: string | null;
+  stable_debt_raw: string | null;
+  variable_debt_raw: string | null;
   collateral_enabled: boolean;
   position_updated_at: number | null;
 };
@@ -362,10 +362,10 @@ function parseObservation(
       price_updated_at: priceUpdatedAt,
       price_age_seconds: priceAgeSeconds,
     },
-    supplied_raw: supplied ?? "0",
-    debt_raw: debt ?? "0",
-    stable_debt_raw: stableDebt ?? "0",
-    variable_debt_raw: variableDebt ?? "0",
+    supplied_raw: supplied,
+    debt_raw: debt,
+    stable_debt_raw: stableDebt,
+    variable_debt_raw: variableDebt,
     collateral_enabled: row.usageAsCollateralEnabledOnUser === true,
     position_updated_at: positionUpdatedAt,
   };

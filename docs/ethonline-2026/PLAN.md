@@ -27,13 +27,13 @@ Exit: reproducible live evidence for one policy, with known freshness and no inv
 
 Files to add: `shared/schemas/position-evidence.ts`, `api/app/position-evidence.ts`, `api/tests/position-evidence.test.ts`; sanitized test fixtures under `api/tests/fixtures/position-evidence/`.
 
-1. Write failing tests for canonical hash stability, mutation sensitivity, invalid numbers, stale/missing data and subject mismatch.
-2. Implement normalization, explicit gaps, canonical serialization and evidence hash.
+1. [x] Write failing tests for canonical hash stability, mutation sensitivity, invalid numbers, stale/missing data and subject mismatch.
+2. [x] Implement normalization, explicit gaps, canonical serialization and evidence hash.
 3. Write failing policy cases for DENY, ALLOW, DOWNSIZE and preservation of an existing policy DENY.
 4. Implement the evidence policy wrapper without weakening `api/app/policy.ts`.
 5. Run `npm test`; manually compare live evidence and policy reasons.
 
-Exit: the same intent has a traceable outcome driven by data, not hard-coded demo scenario selection.
+Exit for this slice: the live Graph result has a traceable, hashed envelope and an explicit quality verdict. The same intent is not yet policy-authorized; USD valuation and the evidence-policy wrapper remain gated work.
 
 ## 3. Evidence-bound authorization — September 7–8
 

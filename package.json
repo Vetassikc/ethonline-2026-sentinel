@@ -21,6 +21,7 @@
     "judge:kraken-paper": "node scripts/kraken-paper-smoke.ts",
     "graph:preflight": "node scripts/graph-preflight.ts",
     "graph:position": "node scripts/graph-position.ts",
+    "graph:evidence": "node scripts/position-evidence.ts",
     "slides:pdf": "bash scripts/export-slides-pdf.sh",
     "test": "node --test api/tests/*.test.ts"
   },

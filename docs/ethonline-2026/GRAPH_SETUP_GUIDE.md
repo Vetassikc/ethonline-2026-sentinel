@@ -86,6 +86,14 @@ npm run graph:position
 
 This uses a fixed, paginated `userReserves` query. It prints raw token amounts, decimals, collateral/debt fields and block provenance, but never prints the API key. A successful result may still contain `usd_valuation_unavailable`; this deployment exposes `priceInEth`, not a verified USD price, so the evidence policy must not treat the result as a complete USD exposure signal yet.
 
+To render the same live response as the public `position_evidence.v1` envelope, run:
+
+```sh
+npm run --silent graph:evidence
+```
+
+This adds exact decimal strings, source paths, canonical quality gaps and a `keccak256` `evidence_hash`. A successful provider read can still have a `DENY` quality verdict while valuation or freshness gaps remain. The command never prints `GRAPH_API_KEY`.
+
 ### If the result says `missing_configuration: GRAPH_DEMO_ACCOUNT`
 
 The project does not load `.env.local` automatically. Run the command from the repository directory and export the file in the same shell session:

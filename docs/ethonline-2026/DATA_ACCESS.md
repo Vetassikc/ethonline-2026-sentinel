@@ -44,4 +44,4 @@ If the selected indexer cannot satisfy the freshness bound, make that visible. D
 
 Use one existing AI client with a restricted project CLI/tool. The model proposes an allowlisted query plan, the adapter validates arguments, and the policy uses actual results. Log model/tool steps without secrets. [The Graph MCP introduction](https://thegraph.com/docs/en/subgraphs/tooling/subgraph-mcp/introduction/) is an alternative integration path, not an extra mandatory component.
 
-The current preparation has neither an active AI-to-Graph runtime nor a working live adapter. These are explicit implementation milestones.
+There is no active AI-to-Graph runtime yet. The live Graph adapter and `position_evidence.v1` normalization layer are implemented; they remain read-only and fail closed until the valuation and policy gates are complete.
