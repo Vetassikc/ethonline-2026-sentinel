@@ -32,6 +32,7 @@ Use the local address printed by the server. Existing `/judge` is the old demons
 - [Implementation plan](docs/ethonline-2026/PLAN.md)
 - [Routes and interfaces](docs/ethonline-2026/ROUTES.md)
 - [Data access and feasibility gate](docs/ethonline-2026/DATA_ACCESS.md)
+- [Graph setup for beginners](docs/ethonline-2026/GRAPH_SETUP_GUIDE.md)
 - [Portal instructions and submission drafts](docs/ethonline-2026/PORTAL_GUIDE.md)
 - [Demo and acceptance checklist](docs/ethonline-2026/DEMO.md)
 - [Current status and blockers](docs/ethonline-2026/STATUS.md)

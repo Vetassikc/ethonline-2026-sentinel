@@ -14,6 +14,7 @@ AI-authored/assisted files at this checkpoint:
 - docs/ethonline-2026/PLAN.md
 - docs/ethonline-2026/ROUTES.md
 - docs/ethonline-2026/DATA_ACCESS.md
+- docs/ethonline-2026/GRAPH_SETUP_GUIDE.md
 - docs/ethonline-2026/PORTAL_GUIDE.md
 - docs/ethonline-2026/DEMO.md
 - docs/ethonline-2026/STATUS.md

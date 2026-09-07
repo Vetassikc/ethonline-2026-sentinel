@@ -16,7 +16,7 @@ Baseline policy verdict signatures are deterministic demo artifacts; they are di
 
 ## New work completed September 5
 
-Local isolation, baseline verification and the planning/documentation package: START_HERE.md, CONTINUITY.md, AI_ATTRIBUTION.md and docs/ethonline-2026/*.md. A small read-only `scripts/graph-preflight.ts` command and its tests now verify missing configuration handling and sanitized Graph `_meta` metadata; this is a feasibility tool, not the position-evidence feature.
+Local isolation, baseline verification and the planning/documentation package: START_HERE.md, CONTINUITY.md, AI_ATTRIBUTION.md and docs/ethonline-2026/*.md. A small read-only `scripts/graph-preflight.ts` command and its tests now verify missing configuration handling and sanitized Graph `_meta` metadata; `GRAPH_SETUP_GUIDE.md` explains the values and source-selection gate. This is a feasibility tool, not the position-evidence feature.
 
 ## Planned new work, not yet delivered
 
