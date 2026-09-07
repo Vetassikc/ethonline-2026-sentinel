@@ -38,6 +38,12 @@
 
 ## FACT — known source limitation
 
+Fresh live acceptance on September 7: Graph preflight returned `status: ok`
+at indexed block `51004968`, indexed age `2` seconds and
+`hasIndexingErrors: false`. The exact exposure-tool request then returned CLI
+exit `2`, `DENY`, no evaluation reference and reason `rpc_rpc_http_error`.
+One 15-second cooldown retry returned the same sanitized result.
+
 The sampled public Base RPC endpoint returned HTTP `429`/`over rate limit`
 during a later repeated live-browser probe. The adapter returned a blocked,
 non-authorizing result instead of reusing an old success or silently switching
