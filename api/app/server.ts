@@ -6,7 +6,21 @@ import {
   validateSignedTradeIntentBundle,
   verifySignedTradeIntentBundle,
 } from "./erc8004.ts";
+import {
+  executeExposurePermit,
+} from "./condition-check.ts";
 import { evaluatePositionEvidencePolicy } from "./evidence-policy.ts";
+import { issueExposurePermit, verifyExposurePermit } from "./exposure-permit.ts";
+import {
+  DEFAULT_EXPOSURE_EVALUATION_TTL_MS,
+  DEFAULT_EXPOSURE_POLICY,
+  createExposureRuntimeState,
+  evaluateExposureRequest,
+  getStoredExposureEvaluation,
+  type ExposureRuntimeState,
+  type ExposureServiceDependencies,
+} from "./exposure-service.ts";
+import { MAX_EXPOSURE_REQUEST_UNITS, validateExposureRequest } from "./exposure-request.ts";
 import { runGraphPositionQuery, type GraphFetchLike } from "./graph-client.ts";
 import { buildKrakenCliPaperSmokeArtifact } from "./kraken-cli-compat.ts";
 import { buildKrakenExecutionPreview } from "./execution-preview.ts";
@@ -28,10 +42,7 @@ import {
   isSupportedAgentRegistryAnchor,
 } from "./shared-sepolia.ts";
 import { resolveGraphPositionOptions } from "../../scripts/graph-position.ts";
-import {
-  createExposureRuntimeState,
-  type ExposureRuntimeState,
-} from "./exposure-service.ts";
+import type { ExposureEvaluation } from "../../shared/schemas/exposure-graph.ts";
 
 type JudgeModeResponse = {
   statusCode: number;
@@ -45,6 +56,10 @@ export type PositionEvidenceRequestDependencies = {
   now?: Date;
 };
 
+export type JudgeModeRequestDependencies = PositionEvidenceRequestDependencies & {
+  exposureDependencies?: ExposureServiceDependencies;
+};
+
 type ServerEnv = {
   HOST?: string;
   NODE_ENV?: string;
@@ -53,6 +68,7 @@ type ServerEnv = {
 
 const ROOT_DIR = new URL("../../", import.meta.url);
 const EXPOSURE_RUNTIME_STATE = createExposureRuntimeState();
+const MAX_REQUEST_BODY_BYTES = 64 * 1024;
 const STATIC_ASSETS = {
   "/": {
     fileUrl: new URL("web/hub.html", ROOT_DIR),
@@ -82,6 +98,14 @@ const STATIC_ASSETS = {
     fileUrl: new URL("web/position-evidence.html", ROOT_DIR),
     contentType: "text/html; charset=utf-8",
   },
+  "/exposure-graph": {
+    fileUrl: new URL("web/exposure-graph.html", ROOT_DIR),
+    contentType: "text/html; charset=utf-8",
+  },
+  "/exposure-graph/": {
+    fileUrl: new URL("web/exposure-graph.html", ROOT_DIR),
+    contentType: "text/html; charset=utf-8",
+  },
   "/web/app.js": {
     fileUrl: new URL("web/app.js", ROOT_DIR),
     contentType: "text/javascript; charset=utf-8",
@@ -92,6 +116,10 @@ const STATIC_ASSETS = {
   },
   "/web/position-evidence.js": {
     fileUrl: new URL("web/position-evidence.js", ROOT_DIR),
+    contentType: "text/javascript; charset=utf-8",
+  },
+  "/web/exposure-graph.js": {
+    fileUrl: new URL("web/exposure-graph.js", ROOT_DIR),
     contentType: "text/javascript; charset=utf-8",
   },
   "/web/status-notes.js": {
@@ -171,6 +199,94 @@ function buildPipelineBundle(
   };
 }
 
+function resolveExposureDependencies(
+  dependencies: JudgeModeRequestDependencies,
+): ExposureServiceDependencies {
+  const exposureDependencies = dependencies.exposureDependencies ?? {};
+  return {
+    ...exposureDependencies,
+    graphOptions: exposureDependencies.graphOptions ?? dependencies.graphOptions,
+    fetchImpl: exposureDependencies.fetchImpl ?? dependencies.fetchImpl,
+    now: exposureDependencies.now ?? dependencies.now,
+    runtimeState: exposureDependencies.runtimeState ?? EXPOSURE_RUNTIME_STATE,
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function hasExactKeys(value: Record<string, unknown>, allowed: string[]): boolean {
+  const actual = Object.keys(value).sort();
+  const expected = [...allowed].sort();
+  return actual.length === expected.length && actual.every((key, index) => key === expected[index]);
+}
+
+function hasOnlyKeys(value: Record<string, unknown>, allowed: string[]): boolean {
+  const allowedSet = new Set(allowed);
+  return Object.keys(value).every((key) => allowedSet.has(key));
+}
+
+function invalidExposureRouteRequest(details: string): JudgeModeResponse {
+  return {
+    statusCode: 400,
+    payload: { error: "invalid_exposure_route_request", details: [details] },
+  };
+}
+
+function buildExposureConfig(): Record<string, unknown> {
+  const graphOptions = resolveGraphPositionOptions();
+  return {
+    schema_version: "sentinel-exposure-config.v1",
+    supported_action: {
+      schema_version: "sentinel-exposure-buy.v1",
+      action: "BUY_EXPOSURE",
+      asset: "wstETH",
+      unit: "wstETH",
+      max_request_units: MAX_EXPOSURE_REQUEST_UNITS,
+    },
+    policy: DEFAULT_EXPOSURE_POLICY,
+    evaluation_ttl_seconds: DEFAULT_EXPOSURE_EVALUATION_TTL_MS / 1000,
+    source: {
+      graph_subgraph_id: graphOptions.subgraphId ?? null,
+      chain_id: 8453,
+      rpc_endpoint: "https://mainnet.base.org",
+      account_configured: Boolean(graphOptions.account),
+      account_source: "server_configuration",
+    },
+  };
+}
+
+function buildReplayEvaluation(evaluation: ExposureEvaluation): ExposureEvaluation {
+  const replayHash = `0x${"cc".repeat(32)}`;
+  return {
+    ...evaluation,
+    mode: "replay",
+    graph: {
+      ...evaluation.graph,
+      mode: "replay",
+      source: {
+        ...evaluation.graph.source,
+        block: {
+          ...evaluation.graph.source.block,
+          number: evaluation.graph.source.block.number + 1,
+          hash: replayHash,
+          timestamp: evaluation.graph.source.block.timestamp + 1,
+        },
+      },
+      graph_hash: `0x${"dd".repeat(32)}`,
+    },
+    policy: {
+      ...evaluation.policy,
+      verdict: "DENY",
+      allowed_units: "0.000000000000000000",
+      headroom_units: "0.000000000000000000",
+      binding_constraint: "dependency_cap",
+      reason_codes: ["replay_exhausted_headroom"],
+    },
+  };
+}
+
 async function buildScenarioBundle(pathname: string): Promise<JudgeModeResponse | null> {
   if (pathname === "/healthz") {
     return {
@@ -189,6 +305,13 @@ async function buildScenarioBundle(pathname: string): Promise<JudgeModeResponse 
       payload: {
         scenarios: listScenarioNames(),
       },
+    };
+  }
+
+  if (pathname === "/api/exposure/config") {
+    return {
+      statusCode: 200,
+      payload: buildExposureConfig(),
     };
   }
 
@@ -304,18 +427,28 @@ export function resolveServerConfig(env: ServerEnv = process.env): {
   };
 }
 
-async function readRawBody(request: IncomingMessage): Promise<string> {
+type RawBodyResult =
+  | { ok: true; body: string }
+  | { ok: false; error: "request_body_too_large" };
+
+async function readRawBody(request: IncomingMessage): Promise<RawBodyResult> {
   const chunks: Buffer[] = [];
+  let totalBytes = 0;
 
   for await (const chunk of request) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    totalBytes += buffer.byteLength;
+    if (totalBytes > MAX_REQUEST_BODY_BYTES) {
+      return { ok: false, error: "request_body_too_large" };
+    }
+    chunks.push(buffer);
   }
 
   if (chunks.length === 0) {
-    return "";
+    return { ok: true, body: "" };
   }
 
-  return Buffer.concat(chunks).toString("utf8");
+  return { ok: true, body: Buffer.concat(chunks).toString("utf8") };
 }
 
 export async function buildPositionEvidenceEvaluation(
@@ -361,8 +494,14 @@ export async function handleJudgeModeRequest(
   method: string,
   pathname: string,
   rawBody: string,
-  dependencies: PositionEvidenceRequestDependencies = {},
+  dependencies: JudgeModeRequestDependencies = {},
 ): Promise<JudgeModeResponse> {
+  if (method === "POST" && Buffer.byteLength(rawBody, "utf8") > MAX_REQUEST_BODY_BYTES) {
+    return {
+      statusCode: 413,
+      payload: { error: "request_body_too_large" },
+    };
+  }
   if (method === "GET" && pathname in STATIC_ASSETS) {
     return {
       statusCode: 200,
@@ -397,6 +536,148 @@ export async function handleJudgeModeRequest(
     if (scenarioBundle) {
       return scenarioBundle;
     }
+  }
+
+  if (method === "POST" && pathname.startsWith("/api/exposure/")) {
+    let payload: unknown;
+    try {
+      payload = rawBody.length === 0 ? {} : JSON.parse(rawBody);
+    } catch {
+      return {
+        statusCode: 400,
+        payload: { error: "invalid_json" },
+      };
+    }
+
+    const exposureDependencies = resolveExposureDependencies(dependencies);
+    const now = exposureDependencies.now ?? new Date();
+    const runtimeState = exposureDependencies.runtimeState ?? EXPOSURE_RUNTIME_STATE;
+
+    if (pathname === "/api/exposure/evaluate") {
+      const validation = validateExposureRequest(payload);
+      if (!validation.ok) {
+        return {
+          statusCode: 400,
+          payload: { error: validation.error.code, details: validation.error.details },
+        };
+      }
+      const result = await evaluateExposureRequest(validation.request, exposureDependencies);
+      return {
+        statusCode: result.status === "ok" ? 200 : 503,
+        payload: result,
+      };
+    }
+
+    if (pathname === "/api/exposure/permit") {
+      if (!isRecord(payload) || !hasOnlyKeys(payload, ["evaluation_ref", "nonce", "audience"])) {
+        return invalidExposureRouteRequest("Only evaluation_ref, nonce and audience are accepted.");
+      }
+      if (
+        typeof payload.evaluation_ref !== "string"
+        || !/^exposure_[0-9a-f]{32}$/.test(payload.evaluation_ref)
+        || (payload.nonce !== undefined && typeof payload.nonce !== "string")
+        || (payload.audience !== undefined && typeof payload.audience !== "string")
+      ) {
+        return invalidExposureRouteRequest("evaluation_ref, nonce and audience must be bounded strings.");
+      }
+      const evaluation = getStoredExposureEvaluation(runtimeState, payload.evaluation_ref, now);
+      if (!evaluation) {
+        return { statusCode: 400, payload: { error: "invalid_evaluation_reference" } };
+      }
+      const issued = issueExposurePermit(evaluation, {
+        now,
+        ...(payload.nonce === undefined ? {} : { nonce: payload.nonce }),
+        ...(payload.audience === undefined ? {} : { audience: payload.audience }),
+      });
+      return {
+        statusCode: issued.status === "issued" ? 200 : 403,
+        payload: issued,
+      };
+    }
+
+    if (pathname === "/api/exposure/verify") {
+      if (!isRecord(payload) || !hasExactKeys(payload, ["request", "permit"])) {
+        return invalidExposureRouteRequest("Only request and permit are accepted.");
+      }
+      const validation = validateExposureRequest(payload.request);
+      if (!validation.ok) {
+        return {
+          statusCode: 400,
+          payload: { error: validation.error.code, details: validation.error.details },
+        };
+      }
+      if (!isRecord(payload.permit)) {
+        return invalidExposureRouteRequest("permit must be an object.");
+      }
+      return {
+        statusCode: 200,
+        payload: verifyExposurePermit({
+          request: validation.request,
+          permit: payload.permit as never,
+          now,
+        }),
+      };
+    }
+
+    if (pathname === "/api/exposure/paper-execute") {
+      if (!isRecord(payload) || !hasExactKeys(payload, ["request", "permit"])) {
+        return invalidExposureRouteRequest("Only request and permit are accepted.");
+      }
+      const validation = validateExposureRequest(payload.request);
+      if (!validation.ok) {
+        return {
+          statusCode: 400,
+          payload: { error: validation.error.code, details: validation.error.details },
+        };
+      }
+      if (!isRecord(payload.permit)) {
+        return invalidExposureRouteRequest("permit must be an object.");
+      }
+      const result = await executeExposurePermit({
+        request: validation.request,
+        permit: payload.permit as never,
+        state: runtimeState,
+        now,
+        refresh: async () => {
+          const refreshed = await evaluateExposureRequest(validation.request, exposureDependencies);
+          if (refreshed.status !== "ok" || !refreshed.evaluation_ref) {
+            return { status: "blocked" as const, code: "CURRENT_SOURCE_UNAVAILABLE" };
+          }
+          return getStoredExposureEvaluation(runtimeState, refreshed.evaluation_ref, now)
+            ?? { status: "blocked" as const, code: "CURRENT_SOURCE_UNAVAILABLE" };
+        },
+      });
+      return {
+        statusCode: result.executable ? 200 : result.code === "REFRESH_FAILED" ? 503 : 409,
+        payload: result,
+      };
+    }
+
+    if (pathname === "/api/exposure/replay") {
+      if (!isRecord(payload) || !hasExactKeys(payload, ["evaluation_ref"])) {
+        return invalidExposureRouteRequest("Only evaluation_ref is accepted.");
+      }
+      if (typeof payload.evaluation_ref !== "string" || !/^exposure_[0-9a-f]{32}$/.test(payload.evaluation_ref)) {
+        return invalidExposureRouteRequest("evaluation_ref must be a bounded evaluation reference.");
+      }
+      const evaluation = getStoredExposureEvaluation(runtimeState, payload.evaluation_ref, now);
+      if (!evaluation) {
+        return { statusCode: 400, payload: { error: "invalid_evaluation_reference" } };
+      }
+      return {
+        statusCode: 200,
+        payload: {
+          status: "ok",
+          evaluation_ref: payload.evaluation_ref,
+          ...buildReplayEvaluation(evaluation),
+        },
+      };
+    }
+
+    return {
+      statusCode: 404,
+      payload: { error: "not_found", details: [`No route for ${method} ${pathname}`] },
+    };
   }
 
   if (method === "POST" && pathname === "/api/position-evidence/evaluate") {
@@ -520,11 +801,20 @@ export async function handleJudgeModeRequest(
 export function createJudgeModeServer() {
   return createServer(async (request, response) => {
     const requestUrl = new URL(request.url ?? "/", "http://127.0.0.1");
-    const rawBody = request.method === "POST" ? await readRawBody(request) : "";
+    const rawBodyResult = request.method === "POST"
+      ? await readRawBody(request)
+      : { ok: true as const, body: "" };
+    if (!rawBodyResult.ok) {
+      respond(response, {
+        statusCode: 413,
+        payload: { error: rawBodyResult.error },
+      });
+      return;
+    }
     const result = await handleJudgeModeRequest(
       request.method ?? "UNKNOWN",
       requestUrl.pathname,
-      rawBody,
+      rawBodyResult.body,
     );
     respond(response, result);
   });
