@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import type { BaseWstEthSnapshot } from "../app/base-rpc.ts";
-import { BASE_WSTETH_ADDRESS } from "../app/base-rpc.ts";
+import { BASE_MAINNET_RPC_URL, BASE_WSTETH_ADDRESS } from "../app/base-rpc.ts";
 import type { GraphPositionEvidence } from "../app/graph-client.ts";
 import { buildExposureGraph } from "../app/exposure-graph.ts";
 
@@ -78,6 +78,7 @@ function graphEvidence(
 function rpcSnapshot(overrides: Partial<BaseWstEthSnapshot> = {}): BaseWstEthSnapshot {
   return {
     block: { number: BLOCK_NUMBER, hash: BLOCK_HASH, timestamp: BLOCK_TIMESTAMP },
+    rpc_endpoint: BASE_MAINNET_RPC_URL,
     contracts: {
       underlying: BASE_WSTETH_ADDRESS,
       a_token: A_TOKEN,

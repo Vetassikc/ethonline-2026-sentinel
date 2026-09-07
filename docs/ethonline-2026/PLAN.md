@@ -33,7 +33,8 @@ to use a stale or synthetic live result.
 ## 2. Graph and deterministic accounting — September 7
 
 - [x] Extend the Graph adapter with scaled supply, aToken and pool relations.
-- [x] Add fixed-host Base RPC validation and Ray-normalized supply reads.
+- [x] Add server-owned Base RPC configuration, Base chain validation and
+  Ray-normalized supply reads with sanitized rate-limit failures.
 - [x] Add `exposure_graph.v1` nodes, edges, paths, provenance, gaps and hash.
 - [x] Count direct and Aave paths once on one wstETH asset; keep debt separate.
 - [x] Add exact fixed-point policy arithmetic and cap/headroom reason codes.

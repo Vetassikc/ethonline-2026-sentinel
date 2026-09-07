@@ -2,7 +2,9 @@ import { randomUUID } from "node:crypto";
 
 import {
   BASE_WSTETH_ADDRESS,
+  resolveBaseRpcConfig,
   type BaseWstEthResult,
+  type BaseRpcConfig,
   type RpcFetchLike,
   readBaseWstEthSnapshot,
 } from "./base-rpc.ts";
@@ -46,6 +48,7 @@ export type ExposureServiceDependencies = {
   fetchImpl?: GraphFetchLike;
   graphFetchImpl?: GraphFetchLike;
   rpcFetchImpl?: RpcFetchLike;
+  rpcConfig?: BaseRpcConfig;
   now?: Date;
   mode?: ExposureMode;
   policy?: ExposurePolicyConfig;
@@ -157,6 +160,12 @@ export async function evaluateExposureRequest(
   const mode = dependencies.mode ?? "live";
   const now = dependencies.now ?? new Date();
   const runtimeState = dependencies.runtimeState ?? createExposureRuntimeState();
+  const rpcConfigResult = dependencies.rpcConfig
+    ? { status: "ok" as const, config: dependencies.rpcConfig }
+    : resolveBaseRpcConfig();
+  if (rpcConfigResult.status !== "ok") {
+    return responseForFailure(requestValue, mode, policy, "rpc_configuration_invalid");
+  }
   const graphOptions = dependencies.graphOptions ?? resolveGraphPositionOptions();
   const graphQuery = dependencies.graphQuery ?? runGraphPositionQuery;
   const rpcReader = dependencies.rpcReader ?? readBaseWstEthSnapshot;
@@ -193,13 +202,17 @@ export async function evaluateExposureRequest(
         timestamp: graphBlock.timestamp,
       },
       graphObservation: observation,
+      rpcConfig: rpcConfigResult.config,
       fetchImpl: dependencies.rpcFetchImpl,
     });
   } catch {
     return responseForFailure(requestValue, mode, policy, "rpc_adapter_error");
   }
   if (rpcResult.status !== "ok") {
-    return responseForFailure(requestValue, mode, policy, `rpc_${rpcResult.reason}`);
+    const reason = rpcResult.reason === "rpc_rate_limited"
+      ? "rpc_rate_limited"
+      : `rpc_${rpcResult.reason}`;
+    return responseForFailure(requestValue, mode, policy, reason);
   }
 
   let graphBuild: ExposureGraphBuildResult;

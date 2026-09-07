@@ -60,6 +60,11 @@ It does not submit trades or enforce rules on-chain. A valid signature proves
 typed-data integrity under the demo signer; it does not prove source truth,
 complete portfolio coverage or safety.
 
+The Base endpoint is selected by the server, not by the browser or tool. The
+public default may be replaced through an ignored `BASE_RPC_URL` operator
+setting when the shared endpoint is rate-limited; custom endpoints must use
+HTTPS and prove Base Mainnet chain ID `8453` before a read is accepted.
+
 ## AI boundary
 
 `sentinel_exposure_graph` is a useful restricted local tool contract: the model

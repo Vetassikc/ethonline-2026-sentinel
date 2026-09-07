@@ -109,7 +109,7 @@ case: `scaledATokenBalance`, `reserve.aToken`, and the Aave pool address. Keep
 the fixed query, cursor pagination, common block detection, server-side Graph
 bearer authentication, bounded timeouts, and sanitized errors.
 
-Add a small fixed-host Base RPC adapter. It accepts only the server-selected
+Add a small server-selected Base RPC adapter. It accepts only the server-selected
 block, account, underlying, aToken and Aave pool returned by the validated
 source. It must validate address shapes, chain identity, response shapes and
 contract relationships. It must never accept a browser/model URL. Required
@@ -235,4 +235,3 @@ The live acceptance run must show one positive bounded wstETH case from the
 configured public account without recording its address or portfolio values in
 tracked fixtures. The external AI invocation remains a separately labeled
 gate until a real client is configured.
-

@@ -4,7 +4,7 @@
 
 **Goal:** Deliver one live, bounded \`wstETH\` exposure workflow in which Graph-backed Aave position evidence and same-block Base RPC reads change the permitted paper purchase amount, bind a demo permit, and are rechecked before execution.
 
-**Architecture:** Keep the existing Position Evidence and judge routes unchanged. Add a narrow exposure service composed of a fixed Graph \`UserReserve\` adapter, a fixed-host Base RPC reader, a typed two-path graph builder, exact 18-decimal policy arithmetic, a server-held evaluation store, a unit-based EIP-712 permit, and a paper executor with fresh-condition checks. The browser and restricted tool can request only the supported \`BUY_EXPOSURE/wstETH\` action; account, chain, sources, cap, signer, and execution state stay server-owned.
+**Architecture:** Keep the existing Position Evidence and judge routes unchanged. Add a narrow exposure service composed of a fixed Graph \`UserReserve\` adapter, a server-selected Base RPC reader, a typed two-path graph builder, exact 18-decimal policy arithmetic, a server-held evaluation store, a unit-based EIP-712 permit, and a paper executor with fresh-condition checks. The browser and restricted tool can request only the supported \`BUY_EXPOSURE/wstETH\` action; account, chain, sources, cap, signer, and execution state stay server-owned.
 
 **Tech Stack:** Node 22+ direct TypeScript/ESM, \`node:http\`, \`node:test\`, \`node:assert/strict\`, \`ethers\` 6.16+, Graph Gateway, Base JSON-RPC, plain HTML/CSS/JavaScript, SVG.
 
@@ -93,7 +93,7 @@ git add api/app/graph-client.ts api/tests/graph-client.test.ts \
 git commit -m "feat: expose qualified Graph supply relations"
 ~~~
 
-## Task 2: Add the fixed-host Base RPC reader and exact Aave normalization
+## Task 2: Add the server-selected Base RPC reader and exact Aave normalization
 
 **Files:**
 - Create: \`api/app/base-rpc.ts\`
@@ -166,7 +166,7 @@ export async function readBaseWstEthSnapshot(options: {
 }): Promise<BaseWstEthResult>;
 ~~~
 
-Use the fixed Base host by default and accept \`BASE_RPC_URL\` only when its origin is \`https://mainnet.base.org\`; reject other origins before network access. Encode selectors with \`ethers.id\`, decode only bounded \`uint256\`, \`address\`, block header, and bytecode responses, and use the Graph block number as the \`eth_call\` block tag. Verify Graph/RPC block number, hash and timestamp, \`aToken.UNDERLYING_ASSET_ADDRESS()\`, aToken decimals, and non-empty code. Compute normalized supply with Aave's exact Ray multiplication: \`(scaled * normalizedIncome + 5e26) / 1e27\`.
+Use the fixed Base host by default and accept an operator-supplied \`BASE_RPC_URL\` only as an HTTPS server-side endpoint with no URL userinfo or fragment. Expose only its origin in sanitized metadata, verify custom endpoints return Base Mainnet chain ID \`8453\`, and reject invalid configuration before network access. Classify HTTP/JSON-RPC rate limits as \`rpc_rate_limited\` without provider text. Keep the request budget bounded (eight calls for the default endpoint, one additional chain-ID call for a custom endpoint). Encode selectors with \`ethers.id\`, decode only bounded \`uint256\`, \`address\`, block header, and bytecode responses, and use the Graph block number as the \`eth_call\` block tag. Verify Graph/RPC block number, hash and timestamp, \`aToken.UNDERLYING_ASSET_ADDRESS()\`, aToken decimals, and non-empty code. Compute normalized supply with Aave's exact Ray multiplication: \`(scaled * normalizedIncome + 5e26) / 1e27\`.
 
 - [ ] **Step 4: Run the RED/GREEN cycle and regression suite.**
 
@@ -342,7 +342,7 @@ export async function evaluateExposureRequest(
 ): Promise<ExposureEvaluationResponse>;
 ~~~
 
-Read the configured account/Graph settings from the server environment, never from the request. Use an allowlisted Graph observation and the fixed Base RPC adapter, build the graph, run policy, store only authorizing or inspectable results under a short TTL, and return \`live\`/\`fixture\` mode explicitly. Do not store or return the API key.
+Read the configured account/Graph settings from the server environment, never from the request. Use an allowlisted Graph observation and the server-selected Base RPC adapter, build the graph, run policy, store only authorizing or inspectable results under a short TTL, and return \`live\`/\`fixture\` mode explicitly. Do not store or return the API key or raw RPC URL.
 
 - [ ] **Step 4: Run focused tests and regression.**
 
@@ -641,4 +641,3 @@ Create a final local verification commit only if the previous commits did not al
 - Existing judge/operator routes remain regression-covered throughout.
 - No task accepts arbitrary model URLs, account subjects, policy objects, evidence hashes, private keys, or live portfolio fixtures.
 - The external AI/MCP claim is deliberately a separate gate rather than being inferred from the restricted CLI tool.
-

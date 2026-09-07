@@ -2,7 +2,7 @@
 
 ## ETHOnline 2026 working entry point
 
-This public repository is being extended during ETHOnline 2026 Continuity. The current event scope, implementation plan, route contract, live-data gate, continuity disclosure and AI attribution are collected in [START_HERE.md](START_HERE.md). The primary event surface is the narrow [Sentinel Exposure Graph](docs/ethonline-2026/SPEC.md): a wstETH-unit, source-attributed policy bound with a demo-only paper executor. USD valuation, external AI/MCP invocation and production deployment are not claimed.
+This public repository is being extended during ETHOnline 2026 Continuity. The current event scope, implementation plan, route contract, live-data gate, continuity disclosure and AI attribution are collected in [the ETHOnline documentation](docs/ethonline-2026/PLAN.md). The primary event surface is the narrow [Sentinel Exposure Graph](docs/ethonline-2026/SPEC.md): a wstETH-unit, source-attributed policy bound with a demo-only paper executor. USD valuation, external AI/MCP invocation and production deployment are not claimed.
 
 ![Sentinel-8004 cover](assets/cover/sentinel-8004-cover.png)
 
@@ -267,6 +267,11 @@ node --env-file=.env.local scripts/exposure-tool.ts <<'JSON'
 {"schema_version":"sentinel-exposure-buy.v1","action":"BUY_EXPOSURE","asset":"wstETH","unit":"wstETH","requested_units":"2.000000000000000000"}
 JSON
 ```
+
+The optional `BASE_RPC_URL` is server-only. Set it in `.env.local` only when a
+chosen Base Mainnet HTTPS RPC endpoint is needed; never pass it in a browser
+request, tool input or committed URL. Custom endpoints are chain-checked as
+`8453`, and sanitized output contains only the endpoint origin.
 
 ## Read More
 

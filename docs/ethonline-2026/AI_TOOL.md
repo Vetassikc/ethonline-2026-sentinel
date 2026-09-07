@@ -34,6 +34,13 @@ is read-only and cannot choose an account, chain, policy, URL, signer or
 execution route. A blocked Graph/RPC source is non-authorizing and exits with
 status `2` in the CLI.
 
+`BASE_RPC_URL` is an operator-only server configuration value, not a tool
+argument. It may point to a chosen Base Mainnet HTTPS JSON-RPC endpoint; the
+adapter verifies chain ID `8453` for a custom endpoint and publishes only a
+safe origin label. Credential-bearing path/query details are never returned.
+If the endpoint returns HTTP `429`, the tool reports the sanitized
+`rpc_rate_limited` reason and remains non-authorizing.
+
 The local CLI invocation is not evidence of a genuine external model/MCP
 trace. This repository must not claim a natural-language AI interaction until
 a configured client performs that request and the founder records the trace.

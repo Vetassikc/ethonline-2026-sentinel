@@ -4,7 +4,6 @@ import {
   BASE_AAVE_POOL_ADDRESS,
   BASE_AAVE_WSTETH_ATOKEN_ADDRESS,
   BASE_MAINNET_CHAIN_ID,
-  BASE_MAINNET_RPC_URL,
   BASE_WSTETH_ADDRESS,
   type BaseWstEthSnapshot,
 } from "./base-rpc.ts";
@@ -351,7 +350,7 @@ export function buildExposureGraph(options: {
     source: {
       graph_subgraph_id: graph.source.subgraph_id,
       graph_endpoint: graph.source.endpoint,
-      rpc_endpoint: BASE_MAINNET_RPC_URL,
+      rpc_endpoint: rpc.rpc_endpoint,
       block,
     },
     nodes,

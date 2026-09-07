@@ -9,6 +9,7 @@ import {
 import {
   executeExposurePermit,
 } from "./condition-check.ts";
+import { resolveBaseRpcConfig } from "./base-rpc.ts";
 import { evaluatePositionEvidencePolicy } from "./evidence-policy.ts";
 import { issueExposurePermit, verifyExposurePermit } from "./exposure-permit.ts";
 import {
@@ -236,6 +237,7 @@ function invalidExposureRouteRequest(details: string): JudgeModeResponse {
 
 function buildExposureConfig(): Record<string, unknown> {
   const graphOptions = resolveGraphPositionOptions();
+  const rpcConfig = resolveBaseRpcConfig();
   return {
     schema_version: "sentinel-exposure-config.v1",
     supported_action: {
@@ -250,7 +252,9 @@ function buildExposureConfig(): Record<string, unknown> {
     source: {
       graph_subgraph_id: graphOptions.subgraphId ?? null,
       chain_id: 8453,
-      rpc_endpoint: "https://mainnet.base.org",
+      rpc_endpoint: rpcConfig.status === "ok" ? rpcConfig.config.public_endpoint : "server_configured_base_rpc",
+      rpc_configuration: rpcConfig.status === "ok" ? "ok" : "blocked",
+      rpc_configured: rpcConfig.status === "ok" && rpcConfig.config.source === "environment",
       account_configured: Boolean(graphOptions.account),
       account_source: "server_configuration",
     },

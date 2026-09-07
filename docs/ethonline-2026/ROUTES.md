@@ -21,7 +21,7 @@ These routes are historical baseline surfaces and are kept regression-covered.
 | Surface | Boundary |
 | --- | --- |
 | `GET /exposure-graph` | Judge-readable request, graph, policy, permit, paper and replay screen |
-| `GET /api/exposure/config` | Server-owned supported action, cap, TTL and source metadata; no credential |
+| `GET /api/exposure/config` | Server-owned supported action, cap, TTL and source metadata; no credential or raw RPC URL |
 | `sentinel_exposure_graph` | Local read-only exact-schema tool around the same evaluation service |
 | `npm run --silent exposure:tool -- --describe` | Prints the restricted tool schema without contacting providers |
 
@@ -66,7 +66,7 @@ workflow and must not be described as USD-qualified authorization.
 ## Module boundaries
 
 - `api/app/graph-client.ts` — fixed The Graph query, pagination and source metadata.
-- `api/app/base-rpc.ts` — fixed Base RPC block/contract/balance validation and Ray normalization.
+- `api/app/base-rpc.ts` — server-owned Base RPC configuration, chain/block/contract/balance validation and Ray normalization.
 - `api/app/exposure-graph.ts` — typed graph construction and provenance.
 - `api/app/exposure-policy.ts` — exact wstETH-unit accounting and cap decision.
 - `api/app/exposure-request.ts` — request schema and bounds.

@@ -122,6 +122,7 @@ function syntheticDependencies(overrides: Record<string, unknown> = {}) {
       status: "ok" as const,
       snapshot: {
         block: GRAPH_RESULT.source.indexed_block,
+        rpc_endpoint: "https://mainnet.base.org",
         contracts: {
           underlying: "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
           a_token: "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",

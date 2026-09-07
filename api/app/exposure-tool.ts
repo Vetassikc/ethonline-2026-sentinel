@@ -2,6 +2,7 @@ import {
   evaluateExposureRequest,
   type ExposureServiceDependencies,
 } from "./exposure-service.ts";
+import { resolveBaseRpcConfig } from "./base-rpc.ts";
 import { validateExposureRequest } from "./exposure-request.ts";
 import type { ExposureRequest } from "../../shared/schemas/exposure-graph.ts";
 
@@ -68,6 +69,9 @@ export async function runExposureGraphTool(
   if (!validation.ok) return { statusCode: 400, payload: validation.error };
 
   const result = await evaluateExposureRequest(validation.request, dependencies);
+  const rpcConfig = dependencies.rpcConfig
+    ? { status: "ok" as const, config: dependencies.rpcConfig }
+    : resolveBaseRpcConfig();
   return {
     statusCode: result.status === "ok" ? 200 : 503,
     payload: {
@@ -78,7 +82,7 @@ export async function runExposureGraphTool(
         provider: "thegraph+base-rpc",
         graph_template_id: "aave-v3-user-reserves-exposure",
         graph_template_version: "2",
-        rpc_host: "https://mainnet.base.org",
+        rpc_host: rpcConfig.status === "ok" ? rpcConfig.config.public_endpoint : "server_configured_base_rpc",
         account_source: "server_configuration",
         chain_source: "server_configuration",
         policy_source: "server_configuration",

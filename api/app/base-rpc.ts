@@ -4,9 +4,88 @@ import type { GraphPositionObservation } from "./graph-client.ts";
 
 export const BASE_MAINNET_CHAIN_ID = 8453;
 export const BASE_MAINNET_RPC_URL = "https://mainnet.base.org";
+export const BASE_RPC_URL_ENV = "BASE_RPC_URL";
 export const BASE_WSTETH_ADDRESS = "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452";
 export const BASE_AAVE_WSTETH_ATOKEN_ADDRESS = "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d";
 export const BASE_AAVE_POOL_ADDRESS = "0xa238dd80c259a72e81d7e4664a9801593f98d1c5";
+
+export type BaseRpcConfig = {
+  public_endpoint: string;
+  chain_id: typeof BASE_MAINNET_CHAIN_ID;
+  verify_chain_id: boolean;
+  source: "default" | "environment";
+};
+
+export type BaseRpcConfigResult =
+  | { status: "ok"; config: BaseRpcConfig }
+  | {
+    status: "blocked";
+    reason: "invalid_rpc_url" | "unsupported_rpc_protocol" | "rpc_url_userinfo";
+  };
+
+const rawRpcUrls = new WeakMap<BaseRpcConfig, string>();
+
+function configWithPrivateUrl(
+  rawUrl: string,
+  publicEndpoint: string,
+  source: BaseRpcConfig["source"],
+  verifyChainId: boolean,
+): BaseRpcConfig {
+  const config: BaseRpcConfig = {
+    public_endpoint: publicEndpoint,
+    chain_id: BASE_MAINNET_CHAIN_ID,
+    verify_chain_id: verifyChainId,
+    source,
+  };
+  rawRpcUrls.set(config, rawUrl);
+  return config;
+}
+
+function privateRpcUrl(config: BaseRpcConfig): string | null {
+  return rawRpcUrls.get(config) ?? null;
+}
+
+export function resolveBaseRpcConfig(
+  env: Record<string, string | undefined> = process.env,
+): BaseRpcConfigResult {
+  const configuredUrl = env[BASE_RPC_URL_ENV]?.trim();
+  if (!configuredUrl) {
+    return {
+      status: "ok",
+      config: configWithPrivateUrl(BASE_MAINNET_RPC_URL, BASE_MAINNET_RPC_URL, "default", false),
+    };
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(configuredUrl);
+  } catch {
+    return { status: "blocked", reason: "invalid_rpc_url" };
+  }
+  if (parsed.protocol !== "https:") {
+    return { status: "blocked", reason: "unsupported_rpc_protocol" };
+  }
+  if (!parsed.hostname || parsed.username || parsed.password || parsed.hash) {
+    return {
+      status: "blocked",
+      reason: parsed.username || parsed.password ? "rpc_url_userinfo" : "invalid_rpc_url",
+    };
+  }
+
+  const publicEndpoint = parsed.origin;
+  const rawUrl = publicEndpoint === BASE_MAINNET_RPC_URL
+    ? BASE_MAINNET_RPC_URL
+    : parsed.toString();
+  return {
+    status: "ok",
+    config: configWithPrivateUrl(
+      rawUrl,
+      publicEndpoint,
+      "environment",
+      publicEndpoint !== BASE_MAINNET_RPC_URL,
+    ),
+  };
+}
 
 const ACCOUNT_PATTERN = /^0x[a-fA-F0-9]{40}$/;
 const HASH_PATTERN = /^0x[a-fA-F0-9]{64}$/;
@@ -33,6 +112,7 @@ export type RpcFetchLike = (
 
 export type BaseWstEthSnapshot = {
   block: { number: number; hash: string; timestamp: number };
+  rpc_endpoint: string;
   contracts: {
     underlying: string;
     a_token: string;
@@ -65,9 +145,12 @@ export type BaseWstEthResult =
     status: "error";
     reason:
       | "rpc_error"
+      | "rpc_rate_limited"
       | "rpc_http_error"
       | "rpc_timeout"
       | "invalid_rpc_response"
+      | "rpc_wrong_chain"
+      | "rpc_request_budget_exceeded"
       | "block_mismatch"
       | "a_token_underlying_mismatch"
       | "decimals_mismatch"
@@ -77,10 +160,22 @@ export type BaseWstEthResult =
   };
 
 class RpcFailure extends Error {
-  readonly reason: "rpc_error" | "rpc_http_error" | "rpc_timeout" | "invalid_rpc_response";
+  readonly reason:
+    | "rpc_error"
+    | "rpc_rate_limited"
+    | "rpc_http_error"
+    | "rpc_timeout"
+    | "invalid_rpc_response"
+    | "rpc_request_budget_exceeded";
 
   constructor(
-    reason: "rpc_error" | "rpc_http_error" | "rpc_timeout" | "invalid_rpc_response",
+    reason:
+      | "rpc_error"
+      | "rpc_rate_limited"
+      | "rpc_http_error"
+      | "rpc_timeout"
+      | "invalid_rpc_response"
+      | "rpc_request_budget_exceeded",
   ) {
     super(reason);
     this.reason = reason;
@@ -152,6 +247,14 @@ function rpcReason(error: unknown): RpcFailure["reason"] {
   return error instanceof RpcFailure ? error.reason : "rpc_error";
 }
 
+function isRateLimitedRpcError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null || Array.isArray(error)) return false;
+  const value = error as { code?: unknown; message?: unknown };
+  if (value.code === -32016 || value.code === 429) return true;
+  return typeof value.message === "string"
+    && /rate.?limit|too many requests/i.test(value.message);
+}
+
 async function rpcCall(
   fetchImpl: RpcFetchLike,
   url: string,
@@ -179,7 +282,9 @@ async function rpcCall(
   }
   clearTimeout(timer);
 
-  if (!response.ok) throw new RpcFailure("rpc_http_error");
+  if (!response.ok) {
+    throw new RpcFailure(response.status === 429 ? "rpc_rate_limited" : "rpc_http_error");
+  }
 
   let payload: unknown;
   try {
@@ -191,26 +296,11 @@ async function rpcCall(
     throw new RpcFailure("invalid_rpc_response");
   }
   const rpc = payload as RpcJson;
-  if (rpc.error !== undefined) throw new RpcFailure("rpc_error");
+  if (rpc.error !== undefined) {
+    throw new RpcFailure(isRateLimitedRpcError(rpc.error) ? "rpc_rate_limited" : "rpc_error");
+  }
   if (!("result" in rpc)) throw new RpcFailure("invalid_rpc_response");
   return rpc.result;
-}
-
-function resolveRpcUrl(value: string | undefined): string | null {
-  if (!value) return BASE_MAINNET_RPC_URL;
-  try {
-    const parsed = new URL(value);
-    if (
-      parsed.origin !== BASE_MAINNET_RPC_URL
-      || parsed.username
-      || parsed.password
-    ) {
-      return null;
-    }
-    return BASE_MAINNET_RPC_URL;
-  } catch {
-    return null;
-  }
 }
 
 export function rayMul(scaled: string, normalizedIncome: string): string {
@@ -246,12 +336,26 @@ export async function readBaseWstEthSnapshot(options: {
   graphObservation: GraphPositionObservation;
   fetchImpl?: RpcFetchLike;
   timeoutMs?: number;
+  rpcConfig?: BaseRpcConfig;
   rpcUrl?: string;
 }): Promise<BaseWstEthResult> {
   const account = normalizeAddress(options.account);
   if (!account) return { status: "blocked", reason: "invalid_account" };
 
-  const rpcUrl = resolveRpcUrl(options.rpcUrl);
+  const configResult = options.rpcConfig
+    ? { status: "ok" as const, config: options.rpcConfig }
+    : options.rpcUrl === undefined
+      ? resolveBaseRpcConfig()
+      : resolveBaseRpcConfig({ [BASE_RPC_URL_ENV]: options.rpcUrl });
+  if (configResult.status !== "ok") {
+    return {
+      status: "blocked",
+      reason: configResult.reason === "unsupported_rpc_protocol" || configResult.reason === "rpc_url_userinfo"
+        ? "unsupported_rpc_url"
+        : configResult.reason,
+    };
+  }
+  const rpcUrl = privateRpcUrl(configResult.config);
   if (!rpcUrl) return { status: "blocked", reason: "unsupported_rpc_url" };
 
   const observationStatus = graphObservationIsSupported(options.graphObservation);
@@ -280,17 +384,23 @@ export async function readBaseWstEthSnapshot(options: {
 
   const fetchImpl = options.fetchImpl ?? (fetch as unknown as RpcFetchLike);
   const timeoutMs = options.timeoutMs ?? 10_000;
+  const maxRequests = configResult.config.verify_chain_id ? 9 : 8;
+  let requestCount = 0;
   let requestId = 1;
-  const call = (method: string, params: unknown[]) => rpcCall(
-    fetchImpl,
-    rpcUrl,
-    method,
-    params,
-    timeoutMs,
-    requestId++,
-  );
+  const call = (method: string, params: unknown[]) => {
+    requestCount += 1;
+    if (requestCount > maxRequests) throw new RpcFailure("rpc_request_budget_exceeded");
+    return rpcCall(fetchImpl, rpcUrl, method, params, timeoutMs, requestId++);
+  };
 
   try {
+    if (configResult.config.verify_chain_id) {
+      const chainId = decodeUint256(await call("eth_chainId", []));
+      if (chainId !== String(BASE_MAINNET_CHAIN_ID)) {
+        return { status: "error", reason: "rpc_wrong_chain" };
+      }
+    }
+
     const blockResult = await call("eth_getBlockByNumber", [hexQuantity(graphBlockNumber), false]);
     if (typeof blockResult !== "object" || blockResult === null || Array.isArray(blockResult)) {
       throw new RpcFailure("invalid_rpc_response");
@@ -375,6 +485,7 @@ export async function readBaseWstEthSnapshot(options: {
       status: "ok",
       snapshot: {
         block: { number: graphBlockNumber, hash: graphHash, timestamp: graphTimestamp },
+        rpc_endpoint: configResult.config.public_endpoint,
         contracts: {
           underlying: BASE_WSTETH_ADDRESS,
           a_token: BASE_AAVE_WSTETH_ATOKEN_ADDRESS,

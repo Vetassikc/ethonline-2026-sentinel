@@ -26,6 +26,11 @@
   paths, keeps debt separate, and returns `ALLOW`, `ALLOW_WITH_DOWNSIZE` or
   `DENY`. The default dependency cap is
   `1.000000000000000000 wstETH` and is server-owned.
+- Base RPC configuration is server-owned. The default public endpoint is
+  `https://mainnet.base.org`; an operator may set an ignored local
+  `BASE_RPC_URL` override, which must be HTTPS and is chain-checked as `8453`.
+  Sanitized metadata exposes only its origin, never a credential-bearing
+  path/query.
 - Permit issuance, independent verification, fresh-condition checks and
   one-use paper execution are implemented behind bounded server routes. State
   is in memory and expires; durable authorization is not claimed.
@@ -33,23 +38,23 @@
   paper executor and labeled replay. A synthetic browser rehearsal completed
   the full flow at narrow width; it is explicitly `FIXTURE`/`REPLAY`, not live
   portfolio evidence.
-- `npm test` passes `160` tests with zero failures, skips or todos. The UI
+- `npm test` passes `167` tests with zero failures, skips or todos. The UI
   contract test passes `3/3`; JavaScript syntax and `git diff --check` pass.
 
 ## FACT — known source limitation
 
-Fresh live acceptance on September 7: Graph preflight returned `status: ok`
-at indexed block `51004968`, indexed age `2` seconds and
-`hasIndexingErrors: false`. The exact exposure-tool request then returned CLI
-exit `2`, `DENY`, no evaluation reference and reason `rpc_rpc_http_error`.
-One 15-second cooldown retry returned the same sanitized result.
+Fresh live acceptance on September 7 at `2026-09-07T20:29:43Z`: Graph
+preflight returned `status: ok` at indexed block `51011817`, indexed age
+`2` seconds and `hasIndexingErrors: false`. The exact exposure-tool request
+then returned CLI-equivalent status `503`, `DENY`, no evaluation reference and
+the sanitized reason `rpc_rate_limited` against the default public Base RPC
+endpoint. The adapter returned a blocked, non-authorizing result instead of
+reusing an old success or silently switching to a fixture.
 
-The sampled public Base RPC endpoint returned HTTP `429`/`over rate limit`
-during a later repeated live-browser probe. The adapter returned a blocked,
-non-authorizing result instead of reusing an old success or silently switching
-to a fixture. The request-budget regression remains covered locally. A fresh
-provider-available live browser positive flow is therefore not claimed by this
-status file.
+A provider-available live browser positive flow is therefore not claimed by
+this status file. The bounded custom-provider path is implemented and locally
+covered; a founder must place a chosen Base Mainnet HTTPS endpoint in the
+ignored `BASE_RPC_URL` configuration before refreshing live acceptance.
 
 ## UNKNOWN or explicitly not delivered
 
@@ -78,9 +83,10 @@ dependency mutation was performed.
 
 ## Next bounded actions
 
-1. Refresh the live source/tool run once the fixed public RPC budget is
-   available, recording only sanitized status, block, path count and policy
-   fields.
+1. If live positive evidence is still worth the event scope, configure a
+   chosen Base Mainnet HTTPS RPC endpoint through server-only `BASE_RPC_URL`,
+   then refresh the source/tool run and record only sanitized status, block,
+   path count and policy fields.
 2. If desired, configure and record a genuine external AI/tool trace without
    granting the model control of account, policy, URLs, signing or execution.
 3. Founder reviews this narrow action policy and decides whether further

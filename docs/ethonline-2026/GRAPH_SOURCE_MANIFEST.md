@@ -56,10 +56,13 @@ The Graph field paths used by the exposure adapter are:
 
 - This deployment exposes `priceInEth`, not a verified USD valuation field. The adapter returns `usd_valuation_unavailable` and must not calculate a USD exposure from an assumed ETH or stablecoin price.
 - The sampled wstETH reserve oracle timestamp was materially older than the fresh indexed block, so the adapter returns `stale_oracle_price` when the configured 300-second price-age bound is exceeded. The narrow policy therefore uses explicit wstETH units and does not depend on that oracle.
-- `currentATokenBalance` is an indexed snapshot and is not treated as the exact normalized supply. The exposure path uses `scaledATokenBalance` plus same-block `getReserveNormalizedIncome` from the fixed Base RPC host.
-- The public Base RPC endpoint has a shared request budget. A later repeated
-  probe returned HTTP `429`; the adapter reports this as non-authorizing
-  provider failure and never falls back to an old result or fixture.
+- `currentATokenBalance` is an indexed snapshot and is not treated as the exact normalized supply. The exposure path uses `scaledATokenBalance` plus same-block `getReserveNormalizedIncome` from the server-selected Base RPC endpoint. The default is `https://mainnet.base.org`; an optional `BASE_RPC_URL` override is HTTPS-only and chain-checked as Base Mainnet.
+- The default public Base RPC endpoint has a shared request budget. A later
+  repeated probe returned HTTP `429`; the adapter reports the sanitized
+  `rpc_rate_limited` category as non-authorizing provider failure and never
+  falls back to an old result or fixture. A server-only HTTPS `BASE_RPC_URL`
+  override is available for a deliberately chosen Base Mainnet provider; its
+  credential-bearing path/query is never included in public metadata.
 - No public demo account is frozen in this manifest. The founder must deliberately choose one and record it in a local ignored `GRAPH_DEMO_ACCOUNT` only.
 
 ## Milestone decision

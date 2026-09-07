@@ -7,6 +7,7 @@ import type { GraphPositionObservation } from "../app/graph-client.ts";
 import {
   BASE_MAINNET_RPC_URL,
   BASE_WSTETH_ADDRESS,
+  resolveBaseRpcConfig,
   rayMul,
   readBaseWstEthSnapshot,
 } from "../app/base-rpc.ts";
@@ -73,6 +74,8 @@ function addressWord(address: string): string {
 type FakeRpcOptions = {
   blockHash?: string;
   code?: string;
+  chainId?: string;
+  httpStatus?: number;
   malformedSelector?: string;
   rpcError?: boolean;
 };
@@ -94,6 +97,26 @@ function fakeRpcFetch(options: FakeRpcOptions = {}) {
         status: 200,
         async json() {
           return { jsonrpc: "2.0", id: 1, error: { code: -32000, message: "provider secret" } };
+        },
+      };
+    }
+
+    if (options.httpStatus !== undefined) {
+      return {
+        ok: false,
+        status: options.httpStatus,
+        async json() {
+          return { jsonrpc: "2.0", id: 1, error: { code: -32016, message: "rate limited fixture" } };
+        },
+      };
+    }
+
+    if (request.method === "eth_chainId") {
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return { jsonrpc: "2.0", id: 1, result: options.chainId ?? "0x2105" };
         },
       };
     }
@@ -202,6 +225,88 @@ test("rayMul rounds Aave Ray multiplication with integer arithmetic", () => {
   assert.equal(rayMul(SCALED_SUPPLY, RAY), SCALED_SUPPLY);
 });
 
+test("resolveBaseRpcConfig keeps the default and redacts configured endpoint details", () => {
+  const defaultConfig = resolveBaseRpcConfig({});
+  assert.equal(defaultConfig.status, "ok");
+  if (defaultConfig.status === "ok") {
+    assert.equal(defaultConfig.config.public_endpoint, BASE_MAINNET_RPC_URL);
+    assert.equal(defaultConfig.config.chain_id, 8453);
+    assert.equal(defaultConfig.config.verify_chain_id, false);
+  }
+
+  const configured = resolveBaseRpcConfig({
+    BASE_RPC_URL: "https://rpc.example.test/v2/fixture-token?query=fixture",
+  });
+  assert.equal(configured.status, "ok");
+  if (configured.status === "ok") {
+    assert.equal(configured.config.public_endpoint, "https://rpc.example.test");
+    assert.equal(configured.config.chain_id, 8453);
+    assert.equal(configured.config.verify_chain_id, true);
+    assert.equal(JSON.stringify(configured).includes("fixture-token"), false);
+    assert.equal(JSON.stringify(configured).includes("query=fixture"), false);
+  }
+});
+
+test("resolveBaseRpcConfig rejects non-HTTPS endpoints before network access", () => {
+  assert.deepEqual(
+    resolveBaseRpcConfig({ BASE_RPC_URL: "http://rpc.example.test" }),
+    { status: "blocked", reason: "unsupported_rpc_protocol" },
+  );
+  assert.deepEqual(
+    resolveBaseRpcConfig({ BASE_RPC_URL: "https://user:pass@rpc.example.test" }),
+    { status: "blocked", reason: "rpc_url_userinfo" },
+  );
+});
+
+test("custom Base RPC is chain-checked and exposes only a safe endpoint label", async () => {
+  const config = resolveBaseRpcConfig({ BASE_RPC_URL: "https://rpc.example.test/v2/fixture-token" });
+  assert.equal(config.status, "ok");
+  if (config.status !== "ok") return;
+
+  const fake = fakeRpcFetch({ chainId: "0x2105" });
+  const result = await readBaseWstEthSnapshot({
+    account: ACCOUNT,
+    graphBlock: { number: BLOCK_NUMBER, hash: BLOCK_HASH, timestamp: BLOCK_TIMESTAMP },
+    graphObservation: WSTETH_GRAPH_OBSERVATION,
+    rpcConfig: config.config,
+    fetchImpl: fake.fetchImpl,
+  });
+
+  assert.equal(result.status, "ok");
+  if (result.status === "ok") {
+    assert.equal(result.snapshot.rpc_endpoint, "https://rpc.example.test");
+    assert.equal(JSON.stringify(result).includes("fixture-token"), false);
+  }
+  assert.equal(fake.requests[0]?.method, "eth_chainId");
+});
+
+test("custom Base RPC rejects a provider on the wrong chain", async () => {
+  const config = resolveBaseRpcConfig({ BASE_RPC_URL: "https://rpc.example.test/v2/fixture-token" });
+  assert.equal(config.status, "ok");
+  if (config.status !== "ok") return;
+
+  const result = await readBaseWstEthSnapshot({
+    account: ACCOUNT,
+    graphBlock: { number: BLOCK_NUMBER, hash: BLOCK_HASH, timestamp: BLOCK_TIMESTAMP },
+    graphObservation: WSTETH_GRAPH_OBSERVATION,
+    rpcConfig: config.config,
+    fetchImpl: fakeRpcFetch({ chainId: "0x1" }).fetchImpl,
+  });
+
+  assert.deepEqual(result, { status: "error", reason: "rpc_wrong_chain" });
+});
+
+test("Base RPC classifies HTTP 429 as sanitized rate limiting", async () => {
+  const result = await readBaseWstEthSnapshot({
+    account: ACCOUNT,
+    graphBlock: { number: BLOCK_NUMBER, hash: BLOCK_HASH, timestamp: BLOCK_TIMESTAMP },
+    graphObservation: WSTETH_GRAPH_OBSERVATION,
+    fetchImpl: fakeRpcFetch({ httpStatus: 429 }).fetchImpl,
+  });
+
+  assert.deepEqual(result, { status: "error", reason: "rpc_rate_limited" });
+});
+
 test("readBaseWstEthSnapshot rejects invalid subjects and unsupported RPC origins before network access", async () => {
   let called = false;
   const fetchImpl = async () => {
@@ -221,7 +326,7 @@ test("readBaseWstEthSnapshot rejects invalid subjects and unsupported RPC origin
     account: ACCOUNT,
     graphBlock: { number: BLOCK_NUMBER, hash: BLOCK_HASH, timestamp: BLOCK_TIMESTAMP },
     graphObservation: WSTETH_GRAPH_OBSERVATION,
-    rpcUrl: "https://evil.example/rpc",
+    rpcUrl: "http://evil.example/rpc",
     fetchImpl,
   });
   assert.deepEqual(invalidUrl, { status: "blocked", reason: "unsupported_rpc_url" });

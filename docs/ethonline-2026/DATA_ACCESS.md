@@ -13,6 +13,18 @@ Use a fixed gateway host and server-side Authorization bearer header. The suppor
 
 The preflight CLI consumes `GRAPH_API_KEY`, `GRAPH_SUBGRAPH_ID` and optional `GRAPH_CHAIN_ID`; the position query additionally requires a deliberately selected public `GRAPH_DEMO_ACCOUNT`; see [.env.ethonline.example](../../.env.ethonline.example). Copy names into a local ignored `.env.local` or export them in the shell. Add only public protocol/account identifiers to a sanitized source manifest. Do not use a funded wallet key as an application signing secret.
 
+The same-block Base reader uses the public `https://mainnet.base.org` endpoint by
+default. If that shared endpoint is rate-limited, the operator may set the
+server-only `BASE_RPC_URL` in the ignored `.env.local` file to a chosen Base
+Mainnet HTTPS JSON-RPC endpoint. The value is never accepted from a browser or
+tool request. HTTPS is required, URL userinfo and fragments are rejected, and a
+custom endpoint must return chain ID `8453` before any exposure read proceeds.
+The adapter keeps any path/query credential private and exposes only the
+endpoint origin in sanitized metadata. The default path is bounded to eight
+RPC requests; a custom endpoint spends one additional request on the chain-ID
+check. HTTP `429` and equivalent JSON-RPC rate-limit errors become the stable,
+non-authorizing `rpc_rate_limited` category without provider response text.
+
 From the project directory, run the first check after exporting values:
 
 ```sh

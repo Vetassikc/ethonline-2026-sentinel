@@ -86,6 +86,7 @@ const RPC_RESULT: BaseWstEthResult = {
       hash: "0x181bf855f6981c23116dc0b982f3bcd5698d792eaab82c080d81cb818e0e95b9",
       timestamp: 1_788_790_000,
     },
+    rpc_endpoint: "https://mainnet.base.org",
     contracts: {
       underlying: "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
       a_token: "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
@@ -217,6 +218,17 @@ test("evaluateExposureRequest returns DENY without an evaluation when Graph or R
   });
   assert.equal(rpcFailed.policy.verdict, "DENY");
   assert.equal(rpcFailed.evaluation_ref, null);
+});
+
+test("evaluateExposureRequest preserves the sanitized RPC rate-limit category", async () => {
+  const result = await evaluateExposureRequest(REQUEST, {
+    ...dependencies([]),
+    rpcReader: async () => ({ status: "error", reason: "rpc_rate_limited" }),
+  });
+
+  assert.equal(result.status, "blocked");
+  assert.deepEqual(result.policy.reason_codes, ["rpc_rate_limited"]);
+  assert.equal(result.evaluation_ref, null);
 });
 
 test("stored exposure evaluations expire and are removed", async () => {

@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import type { GraphPositionEvidence } from "../app/graph-client.ts";
+import { resolveBaseRpcConfig, type BaseRpcConfig } from "../app/base-rpc.ts";
 import {
   EXPOSURE_GRAPH_TOOL_DEFINITION,
   runExposureGraphTool,
@@ -80,16 +81,18 @@ const GRAPH: ExposureGraphV1 = {
   graph_hash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 };
 
-function dependencies() {
+function dependencies(rpcConfig?: BaseRpcConfig) {
   return {
     runtimeState: createExposureRuntimeState(),
     now: new Date("2026-09-07T14:00:00.000Z"),
+    rpcConfig,
     graphOptions: { account: ACCOUNT, chainId: "8453", subgraphId: "public", apiKey: "secret-test-key" },
     graphQuery: async () => GRAPH_RESULT,
     rpcReader: async () => ({
       status: "ok" as const,
       snapshot: {
         block: GRAPH_RESULT.source.indexed_block,
+        rpc_endpoint: "https://mainnet.base.org",
         contracts: { underlying: "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452", a_token: "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d", pool: "0xa238dd80c259a72e81d7e4664a9801593f98d1c5", a_token_underlying_matches: true, decimals_match: true },
         direct_balance_raw: "20000000000000000",
         aave_scaled_supply_raw: "30000000000000000",
@@ -144,6 +147,18 @@ test("exposure graph tool is read-only and accepts the exact purchase request", 
   assert.equal(payload.result.policy.verdict, "ALLOW_WITH_DOWNSIZE");
   assert.equal(payload.result.evaluation_ref?.startsWith("exposure_"), true);
   assert.equal(JSON.stringify(payload).includes("secret-test-key"), false);
+});
+
+test("exposure graph tool exposes only the safe endpoint label for a configured RPC", async () => {
+  const configResult = resolveBaseRpcConfig({ BASE_RPC_URL: "https://rpc.example.test/v2/fixture-token" });
+  assert.equal(configResult.status, "ok");
+  if (configResult.status !== "ok") return;
+
+  const result = await runExposureGraphTool(REQUEST, dependencies(configResult.config));
+  assert.equal(result.statusCode, 200);
+  const payload = result.payload as { query_plan: { rpc_host: string } };
+  assert.equal(payload.query_plan.rpc_host, "https://rpc.example.test");
+  assert.equal(JSON.stringify(payload).includes("fixture-token"), false);
 });
 
 test("exposure graph tool rejects scenarios, custom subjects, URLs, policy overrides and bad scale", async () => {

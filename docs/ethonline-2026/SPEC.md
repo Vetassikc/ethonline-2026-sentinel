@@ -39,7 +39,7 @@ supply, aToken relation, underlying relation, pool relation, debt and indexed
 block metadata. The committed source manifest records the deployment and
 public protocol identifiers without an account or balance.
 
-At the same indexed block, the fixed Base RPC adapter validates:
+At the same indexed block, the server-selected Base RPC adapter validates:
 
 - the block number, hash and timestamp;
 - wstETH contract existence and direct `balanceOf(account)`;
@@ -136,7 +136,10 @@ uses synthetic fixture data and is not presented as current live evidence.
 ## Non-functional requirements
 
 Keep the Node/TypeScript, ethers and plain HTML/CSS/JavaScript stack. Use
-fixed provider hosts, bounded requests, server-side credentials, sanitized
-errors, exact integer arithmetic and explicit source gaps. Never fall back from
-a live provider failure to a fixture or old successful decision. Never claim
-legal, compliance, investment, audit, security or production guarantees.
+server-selected provider endpoints, bounded requests, server-side credentials,
+sanitized errors, exact integer arithmetic and explicit source gaps. The Base
+RPC override is optional, HTTPS-only and chain-checked; it is never supplied by
+the browser or tool input, and only its safe origin may appear in public
+metadata. Never fall back from a live provider failure to a fixture or old
+successful decision. Never claim legal, compliance, investment, audit,
+security or production guarantees.
