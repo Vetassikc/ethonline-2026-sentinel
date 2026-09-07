@@ -284,3 +284,30 @@ test("readBaseWstEthSnapshot sanitizes RPC errors", async () => {
   assert.deepEqual(result, { status: "error", reason: "rpc_error" });
   assert.equal(JSON.stringify(result).includes("provider secret"), false);
 });
+
+test("readBaseWstEthSnapshot stays within the public Base RPC request budget", async () => {
+  const fake = fakeRpcFetch();
+  let calls = 0;
+  const budgetedFetch = async (url: string, init?: RequestInit) => {
+    calls += 1;
+    if (calls > 8) {
+      return {
+        ok: false,
+        status: 429,
+        async json() {
+          return { jsonrpc: "2.0", id: calls, error: { code: -32016, message: "over rate limit" } };
+        },
+      };
+    }
+    return fake.fetchImpl(url, init);
+  };
+  const result = await readBaseWstEthSnapshot({
+    account: ACCOUNT,
+    graphBlock: { number: BLOCK_NUMBER, hash: BLOCK_HASH, timestamp: BLOCK_TIMESTAMP },
+    graphObservation: WSTETH_GRAPH_OBSERVATION,
+    fetchImpl: budgetedFetch,
+  });
+
+  assert.equal(result.status, "ok");
+  assert.equal(calls, 8);
+});

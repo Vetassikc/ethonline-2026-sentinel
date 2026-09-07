@@ -310,7 +310,11 @@ export async function readBaseWstEthSnapshot(options: {
       return { status: "error", reason: "block_mismatch" };
     }
 
-    for (const address of [BASE_WSTETH_ADDRESS, BASE_AAVE_WSTETH_ATOKEN_ADDRESS, BASE_AAVE_POOL_ADDRESS]) {
+    // The public Base endpoint has a shared request budget for one snapshot.
+    // The aToken is validated by its block-tagged calls below; the underlying
+    // code check and pool normalized-income call keep contract existence checks
+    // without spending a redundant aToken code request.
+    for (const address of [BASE_WSTETH_ADDRESS]) {
       const code = decodeCode(await call("eth_getCode", [address, hexQuantity(graphBlockNumber)]));
       if (!code || code === "0x") return { status: "error", reason: "missing_contract_code" };
     }
