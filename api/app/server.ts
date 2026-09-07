@@ -28,6 +28,10 @@ import {
   isSupportedAgentRegistryAnchor,
 } from "./shared-sepolia.ts";
 import { resolveGraphPositionOptions } from "../../scripts/graph-position.ts";
+import {
+  createExposureRuntimeState,
+  type ExposureRuntimeState,
+} from "./exposure-service.ts";
 
 type JudgeModeResponse = {
   statusCode: number;
@@ -48,6 +52,7 @@ type ServerEnv = {
 };
 
 const ROOT_DIR = new URL("../../", import.meta.url);
+const EXPOSURE_RUNTIME_STATE = createExposureRuntimeState();
 const STATIC_ASSETS = {
   "/": {
     fileUrl: new URL("web/hub.html", ROOT_DIR),
@@ -104,6 +109,10 @@ const PUBLIC_PNG_ASSET_PREFIXES = [
   "/assets/screenshots/",
   "/assets/social/",
 ] as const;
+
+export function getExposureRuntimeState(): ExposureRuntimeState {
+  return EXPOSURE_RUNTIME_STATE;
+}
 
 function respond(
   response: ServerResponse,
