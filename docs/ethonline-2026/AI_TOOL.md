@@ -1,5 +1,44 @@
 # Restricted AI tool
 
+## Primary exposure graph tool
+
+`sentinel_exposure_graph` is the primary restricted boundary for the narrow
+Sentinel Exposure Graph demo. It accepts exactly one versioned purchase object:
+
+```json
+{
+  "schema_version": "sentinel-exposure-buy.v1",
+  "action": "BUY_EXPOSURE",
+  "asset": "wstETH",
+  "unit": "wstETH",
+  "requested_units": "2.000000000000000000"
+}
+```
+
+Print its schema with:
+
+```sh
+npm run --silent exposure:tool -- --describe
+```
+
+Run the local restricted CLI with:
+
+```sh
+printf '%s\n' '{"schema_version":"sentinel-exposure-buy.v1","action":"BUY_EXPOSURE","asset":"wstETH","unit":"wstETH","requested_units":"2.000000000000000000"}' | npm run --silent exposure:tool
+```
+
+The tool returns the validated request, fixed Graph/RPC query plan, source-
+derived exposure graph, token-unit policy and opaque evaluation reference. It
+is read-only and cannot choose an account, chain, policy, URL, signer or
+execution route. A blocked Graph/RPC source is non-authorizing and exits with
+status `2` in the CLI.
+
+The local CLI invocation is not evidence of a genuine external model/MCP
+trace. This repository must not claim a natural-language AI interaction until
+a configured client performs that request and the founder records the trace.
+
+## Compatibility position-evidence tool
+
 `sentinel_position_evidence` is the narrow tool contract for an existing AI
 client. It lets the client request one canonical Sentinel position-evidence
 evaluation without giving the model control over accounts, chains, GraphQL,
@@ -57,7 +96,9 @@ The account, chain, subgraph deployment, query template, page bound and bearer
 credential remain server-side. The tool is read-only: it cannot sign a permit,
 submit a transaction, place an order or call an arbitrary URL.
 
-This contract demonstrates a restricted AI-client boundary. A hosted model,
-external MCP registration or natural-language transcript is not bundled in the
-public repository and must not be claimed until it is actually exercised and
-recorded by the founder.
+This compatibility contract demonstrates a restricted AI-client boundary. A
+hosted model, external MCP registration or natural-language transcript is not
+bundled in the public repository and must not be claimed until it is actually
+exercised and recorded by the founder. The scenario tool is retained for
+regression compatibility and is not the source of the new exposure-graph demo
+claim.
