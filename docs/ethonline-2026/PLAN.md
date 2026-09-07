@@ -25,15 +25,15 @@ Exit: reproducible live evidence for one policy, with known freshness and no inv
 
 ## 2. Evidence and deterministic decisions — September 6–7
 
-Files to add: `shared/schemas/position-evidence.ts`, `api/app/position-evidence.ts`, `api/tests/position-evidence.test.ts`; sanitized test fixtures under `api/tests/fixtures/position-evidence/`.
+Files: `shared/schemas/position-evidence.ts`, `api/app/position-evidence.ts`, `api/app/evidence-policy.ts`, `api/tests/position-evidence.test.ts`, `api/tests/evidence-policy.test.ts`; sanitized test fixtures under `api/tests/fixtures/position-evidence/`.
 
 1. [x] Write failing tests for canonical hash stability, mutation sensitivity, invalid numbers, stale/missing data and subject mismatch.
 2. [x] Implement normalization, explicit gaps, canonical serialization and evidence hash.
-3. Write failing policy cases for DENY, ALLOW, DOWNSIZE and preservation of an existing policy DENY.
-4. Implement the evidence policy wrapper without weakening `api/app/policy.ts`.
-5. Run `npm test`; manually compare live evidence and policy reasons.
+3. [x] Write failing policy cases for DENY, ALLOW, DOWNSIZE and preservation of an existing policy DENY.
+4. [x] Implement the evidence policy wrapper without weakening `api/app/policy.ts`.
+5. [x] Run `npm test`; manually compare live evidence and policy reasons.
 
-Exit for this slice: the live Graph result has a traceable, hashed envelope and an explicit quality verdict. The same intent is not yet policy-authorized; USD valuation and the evidence-policy wrapper remain gated work.
+Exit for this slice: the live Graph result has a traceable, hashed envelope and an explicit quality gate. The wrapper never weakens the existing trade policy; current live evidence remains `DENY` until valuation/freshness gaps are resolved. USD valuation equation and evidence-bound permit remain gated work.
 
 ## 3. Evidence-bound authorization — September 7–8
 

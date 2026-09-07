@@ -44,6 +44,8 @@ Negative cases include missing data, stale evidence, source errors, account/chai
 
 The current live source is expected to remain `DENY` until a separately attributed, freshness-checked valuation source is qualified. This is an intentional fail-closed result, not a claim that the account is unsafe.
 
+`api/app/evidence-policy.ts` is the implemented quality gate. It rejects malformed or internally inconsistent envelopes, converts any `DENY` quality result into a `DENY` policy decision, and otherwise preserves the existing deterministic trade-policy result without changing its limits. It does not yet calculate account exposure; that equation remains blocked on a qualified valuation source.
+
 ## Permit and verifier
 
 Baseline warning: `policy.ts` uses a deterministic demo verdict signature. Real EIP-712 trade-intent signing in `erc8004.ts` does not make that verdict cryptographically signed.

@@ -1,3 +1,5 @@
+import type { VerdictAction } from "./sentinel.ts";
+
 export type PositionEvidenceMode = "live" | "fixture";
 export type EvidenceQualityDecision = "ACCEPT" | "DENY";
 
@@ -94,4 +96,16 @@ export interface PositionEvidenceV1 {
     reason_codes: string[];
   };
   evidence_hash: string;
+}
+
+export interface PositionEvidencePolicyDecision {
+  policy_version: string;
+  evidence_hash: string;
+  evidence_quality: EvidenceQualityDecision;
+  baseline_verdict: VerdictAction;
+  verdict: VerdictAction;
+  reason_code: string;
+  reason_detail: string[];
+  requested_notional_usd: string;
+  allowed_notional_usd: string;
 }

@@ -32,7 +32,8 @@ Evaluation references refer to server-held payloads with expiry. Start with boun
 ## Planned module boundaries
 
 - `graph-client.ts`: typed fixed-template request -> validated source response; no policy or signing.
-- `position-evidence.ts`: source response -> normalized envelope/hash (implemented); intent + evidence + policy config -> decision (pending valuation/policy gate).
+- `position-evidence.ts`: source response -> normalized envelope/hash (implemented).
+- `evidence-policy.ts`: evidence quality gate -> `DENY` or unchanged existing trade-policy result (implemented); exposure equation remains pending valuation qualification.
 - `evidence-permit.ts`: trusted server evaluation -> signed permit; separate verification function accepts a configured trusted signer.
 - `scripts/position-evidence.ts`: narrow JSON tool entry point for the live envelope (implemented); AI-client wiring remains pending. No arbitrary URLs or execution capability.
 - `web/position-evidence.js`: render server results; never authorize or hold credentials.

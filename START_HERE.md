@@ -14,7 +14,7 @@ The demo must show a decision changing, not merely a better report. The Graph su
 2. Read [GRAPH_SETUP_GUIDE.md](docs/ethonline-2026/GRAPH_SETUP_GUIDE.md), fill the local Graph values and choose a public `GRAPH_DEMO_ACCOUNT`.
 3. Run `npm run graph:preflight`, `npm run graph:position` and then `npm run graph:evidence`. Review the returned gaps before any policy work.
 4. The normalized evidence contract is implemented in `api/app/position-evidence.ts`; run `npm test` and inspect its `position_evidence.v1` tests before extending policy.
-5. Continue milestone 2 of [PLAN.md](docs/ethonline-2026/PLAN.md). Do not build the presentation layer before the data path is qualified.
+5. Continue milestone 3 of [PLAN.md](docs/ethonline-2026/PLAN.md). Do not build the presentation layer before the data path is qualified.
 
 ## Run the existing baseline
 
