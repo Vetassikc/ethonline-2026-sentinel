@@ -37,13 +37,13 @@ Exit for this slice: the live Graph result has a traceable, hashed envelope and 
 
 ## 3. Evidence-bound authorization — September 7–8
 
-Files to add: `api/app/evidence-permit.ts`, `api/tests/evidence-permit.test.ts`, `scripts/verify-evidence-permit.ts`.
+Files: `api/app/evidence-permit.ts`, `api/tests/evidence-permit.test.ts`; CLI/route integration remains in milestone 4.
 
-1. Write tests for valid signature, wrong trusted signer, changed evidence/intent/amount/audience, expired permit and nonce reuse.
-2. Implement actual EIP-712 permit signing, independent verification and a local one-use paper executor.
-3. Use an ephemeral local signer; document restart behavior and no production key management.
-4. Ensure old deterministic verdict signatures cannot pass the new verifier.
-5. Run all tests and CLI roundtrip; preserve old judge behavior.
+1. [x] Write tests for valid signature, wrong trusted signer, changed evidence/intent/amount/audience, expired permit and nonce reuse.
+2. [x] Implement actual EIP-712 permit signing, independent verification and a local one-use nonce boundary.
+3. [x] Use an isolated demo signer; document no production key management.
+4. [x] Ensure old deterministic verdict signatures cannot pass the new verifier by accepting only the new permit schema/domain.
+5. [x] Run all tests; preserve old judge behavior.
 
 Exit: a tampered authorization fails independently. No real-money execution.
 

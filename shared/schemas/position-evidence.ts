@@ -109,3 +109,55 @@ export interface PositionEvidencePolicyDecision {
   requested_notional_usd: string;
   allowed_notional_usd: string;
 }
+
+export interface EvidencePermitPayload {
+  schema_version: "position-evidence-permit.v1";
+  policy_version: string;
+  intent_hash: string;
+  evidence_hash: string;
+  subject_chain_id: number;
+  subject_account: string;
+  verdict: VerdictAction;
+  authorized_notional_usd: string;
+  issued_at: string;
+  expires_at: string;
+  nonce: string;
+  audience: string;
+}
+
+export interface EvidencePermitTypedData {
+  domain: {
+    name: string;
+    version: string;
+    chainId: number;
+    verifyingContract: string;
+  };
+  primaryType: "PositionEvidencePermit";
+  types: {
+    PositionEvidencePermit: Array<{ name: string; type: string }>;
+  };
+  message: {
+    schemaVersion: string;
+    policyVersion: string;
+    intentHash: string;
+    evidenceHash: string;
+    subjectChainId: string;
+    subjectAccount: string;
+    verdict: string;
+    authorizedNotionalUsd: string;
+    issuedAt: string;
+    expiresAt: string;
+    nonce: string;
+    audience: string;
+  };
+}
+
+export interface SignedEvidencePermit {
+  schema_version: "position-evidence-permit.v1";
+  payload: EvidencePermitPayload;
+  typed_data: EvidencePermitTypedData;
+  permit_hash: string;
+  signature: string;
+  signer: string;
+  demo_only: true;
+}

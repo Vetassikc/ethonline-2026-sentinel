@@ -234,6 +234,11 @@ function queryVariablesHash(account: string, chainId: number): string {
   })));
 }
 
+export function computePositionEvidenceHash(evidence: PositionEvidenceV1): string {
+  const { evidence_hash: _storedHash, ...payload } = evidence;
+  return keccak256(toUtf8Bytes(canonicalStringify(payload)));
+}
+
 export function normalizePositionEvidence(
   input: GraphPositionEvidence,
   options: NormalizePositionEvidenceOptions = {},
@@ -292,8 +297,13 @@ export function normalizePositionEvidence(
     },
   };
 
+  const normalizedEvidence = {
+    ...payload,
+    evidence_hash: "",
+  } as PositionEvidenceV1;
+
   return {
     ...payload,
-    evidence_hash: keccak256(toUtf8Bytes(canonicalStringify(payload))),
+    evidence_hash: computePositionEvidenceHash(normalizedEvidence),
   };
 }

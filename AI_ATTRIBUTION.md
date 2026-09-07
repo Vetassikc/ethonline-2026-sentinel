@@ -1,6 +1,6 @@
 # ETHOnline 2026 AI attribution
 
-## September 5 preparation
+## September 5–7 implementation
 
 Tool: OpenAI Codex. Assistance: review of supplied prior research, current official pages and existing public source; local project setup; documentation drafting; running existing checks.
 
@@ -25,8 +25,16 @@ AI-authored/assisted files at this checkpoint:
 - scripts/graph-preflight.ts
 - api/tests/graph-preflight.test.ts
 - package.json command registration and `.env.ethonline.example`
+- shared/schemas/position-evidence.ts
+- api/app/position-evidence.ts
+- api/tests/position-evidence.test.ts
+- api/app/evidence-policy.ts
+- api/tests/evidence-policy.test.ts
+- api/app/evidence-permit.ts
+- api/tests/evidence-permit.test.ts
+- scripts/position-evidence.ts
 
-The first new code slices are deliberately limited to a read-only Graph `_meta` preflight, a fixed cursor-paginated `UserReserve` adapter and their tests; they do not implement the position policy, permit or UI. Running existing tests is not new test implementation. Existing repository files retain their prior provenance.
+The new code slices remain deliberately bounded: a read-only Graph `_meta` preflight, a fixed cursor-paginated `UserReserve` adapter, normalized evidence hashing, a fail-closed quality gate and a demo-only evidence-bound EIP-712 permit/verifier. They do not implement a live valuation equation, AI runtime or UI. Running existing tests is not new test implementation. Existing repository files retain their prior provenance.
 
 ## Founder direction at preparation time
 

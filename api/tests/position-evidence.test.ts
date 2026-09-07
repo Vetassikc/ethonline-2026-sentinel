@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import type { GraphPositionEvidence } from "../app/graph-client.ts";
 import {
   canonicalStringify,
+  computePositionEvidenceHash,
   normalizePositionEvidence,
   rawIntegerToDecimal,
 } from "../app/position-evidence.ts";
@@ -126,6 +127,19 @@ test("normalizePositionEvidence produces the same hash for the same payload and 
 
   assert.equal(first.evidence_hash, second.evidence_hash);
   assert.notEqual(first.evidence_hash, changed.evidence_hash);
+});
+
+test("computePositionEvidenceHash independently recomputes the stored hash", () => {
+  const result = normalizePositionEvidence(graphEvidence(), { now: NOW });
+
+  assert.equal(computePositionEvidenceHash(result), result.evidence_hash);
+  assert.notEqual(
+    computePositionEvidenceHash({
+      ...result,
+      gaps: ["tampered"],
+    }),
+    result.evidence_hash,
+  );
 });
 
 test("normalizePositionEvidence fails closed for stale block, incomplete pagination and empty observations", () => {
