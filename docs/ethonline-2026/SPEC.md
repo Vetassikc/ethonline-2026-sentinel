@@ -1,6 +1,6 @@
 # Position Evidence v1 — implementation specification
 
-Status: the normalization and hashing slice is implemented; evidence policy, permit and UI remain proposed. Read [DATA_ACCESS.md](DATA_ACCESS.md) before selecting protocol-specific fields.
+Status: normalization, hashing, evidence policy, demo permit and the read-only evaluation UI/route are implemented. AI invocation and permit/verifier HTTP presentation remain proposed. Read [DATA_ACCESS.md](DATA_ACCESS.md) before selecting protocol-specific fields.
 
 ## User story
 

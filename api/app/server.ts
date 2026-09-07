@@ -6,8 +6,11 @@ import {
   validateSignedTradeIntentBundle,
   verifySignedTradeIntentBundle,
 } from "./erc8004.ts";
+import { evaluatePositionEvidencePolicy } from "./evidence-policy.ts";
+import { runGraphPositionQuery, type GraphFetchLike } from "./graph-client.ts";
 import { buildKrakenCliPaperSmokeArtifact } from "./kraken-cli-compat.ts";
 import { buildKrakenExecutionPreview } from "./execution-preview.ts";
+import { normalizePositionEvidence } from "./position-evidence.ts";
 import {
   evaluateTradeIntent,
   validatePermitVerificationRequest,
@@ -24,11 +27,18 @@ import {
   getSharedSepoliaContracts,
   isSupportedAgentRegistryAnchor,
 } from "./shared-sepolia.ts";
+import { resolveGraphPositionOptions } from "../../scripts/graph-position.ts";
 
 type JudgeModeResponse = {
   statusCode: number;
   payload: unknown;
   contentType?: string;
+};
+
+export type PositionEvidenceRequestDependencies = {
+  graphOptions?: ReturnType<typeof resolveGraphPositionOptions>;
+  fetchImpl?: GraphFetchLike;
+  now?: Date;
 };
 
 type ServerEnv = {
@@ -59,12 +69,24 @@ const STATIC_ASSETS = {
     fileUrl: new URL("web/index.html", ROOT_DIR),
     contentType: "text/html; charset=utf-8",
   },
+  "/position-evidence": {
+    fileUrl: new URL("web/position-evidence.html", ROOT_DIR),
+    contentType: "text/html; charset=utf-8",
+  },
+  "/position-evidence/": {
+    fileUrl: new URL("web/position-evidence.html", ROOT_DIR),
+    contentType: "text/html; charset=utf-8",
+  },
   "/web/app.js": {
     fileUrl: new URL("web/app.js", ROOT_DIR),
     contentType: "text/javascript; charset=utf-8",
   },
   "/web/operator.js": {
     fileUrl: new URL("web/operator.js", ROOT_DIR),
+    contentType: "text/javascript; charset=utf-8",
+  },
+  "/web/position-evidence.js": {
+    fileUrl: new URL("web/position-evidence.js", ROOT_DIR),
     contentType: "text/javascript; charset=utf-8",
   },
   "/web/status-notes.js": {
@@ -287,10 +309,50 @@ async function readRawBody(request: IncomingMessage): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
+export async function buildPositionEvidenceEvaluation(
+  intent: Parameters<typeof evaluateTradeIntent>[0],
+  dependencies: PositionEvidenceRequestDependencies = {},
+): Promise<JudgeModeResponse> {
+  const graphOptions = dependencies.graphOptions ?? resolveGraphPositionOptions();
+  const graphResult = await runGraphPositionQuery({
+    ...graphOptions,
+    fetchImpl: dependencies.fetchImpl,
+    now: dependencies.now,
+  });
+
+  if (graphResult.status !== "ok") {
+    return {
+      statusCode: 503,
+      payload: graphResult,
+    };
+  }
+
+  const evidence = normalizePositionEvidence(graphResult, {
+    expected_account: graphOptions.account,
+    expected_chain_id: graphOptions.chainId === undefined
+      ? undefined
+      : Number(graphOptions.chainId),
+    expected_subgraph_id: graphOptions.subgraphId,
+    now: dependencies.now,
+  });
+  const policy = evaluatePositionEvidencePolicy(intent, evidence);
+
+  return {
+    statusCode: 200,
+    payload: {
+      status: "ok",
+      intent,
+      evidence,
+      policy,
+    },
+  };
+}
+
 export async function handleJudgeModeRequest(
   method: string,
   pathname: string,
   rawBody: string,
+  dependencies: PositionEvidenceRequestDependencies = {},
 ): Promise<JudgeModeResponse> {
   if (method === "GET" && pathname in STATIC_ASSETS) {
     return {
@@ -325,6 +387,32 @@ export async function handleJudgeModeRequest(
     const scenarioBundle = await buildScenarioBundle(pathname);
     if (scenarioBundle) {
       return scenarioBundle;
+    }
+  }
+
+  if (method === "POST" && pathname === "/api/position-evidence/evaluate") {
+    try {
+      const payload = rawBody.length === 0 ? {} : JSON.parse(rawBody);
+      const validation = validateTradeIntent(payload);
+      if (!validation.ok) {
+        return {
+          statusCode: 400,
+          payload: validation.error,
+        };
+      }
+
+      return buildPositionEvidenceEvaluation(validation.value, dependencies);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown JSON parsing error.";
+
+      return {
+        statusCode: 400,
+        payload: {
+          error: "invalid_json",
+          details: [message],
+        },
+      };
     }
   }
 

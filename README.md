@@ -2,7 +2,7 @@
 
 ## ETHOnline 2026 working entry point
 
-This public repository is being extended during ETHOnline 2026 Continuity. The current event scope, implementation plan, route contract, live-data gate, continuity disclosure and AI attribution are collected in [START_HERE.md](START_HERE.md). The new Position Evidence feature is explicitly marked as planned until its live Graph path is implemented and verified.
+This public repository is being extended during ETHOnline 2026 Continuity. The current event scope, implementation plan, route contract, live-data gate, continuity disclosure and AI attribution are collected in [START_HERE.md](START_HERE.md). The delivered Position Evidence feature is a read-only, fail-closed live Graph path; it does not authorize trades when required valuation evidence is missing.
 
 ![Sentinel-8004 cover](assets/cover/sentinel-8004-cover.png)
 
@@ -19,6 +19,7 @@ bot is supporting proof only and does not replace the Sentinel-first thesis.
 | Demo | [sentinel-8004-judge-demo.onrender.com](https://sentinel-8004-judge-demo.onrender.com) |
 | Judge | [sentinel-8004-judge-demo.onrender.com/judge](https://sentinel-8004-judge-demo.onrender.com/judge) |
 | Operator | [sentinel-8004-judge-demo.onrender.com/operator](https://sentinel-8004-judge-demo.onrender.com/operator) |
+| Position Evidence (local/event route) | `/position-evidence` |
 | Public Proof Index | [docs/PROOF_INDEX.md](docs/PROOF_INDEX.md) |
 | Shared Contract ABI Fragments | [contracts/shared-sepolia-minimal-abis.ts](contracts/shared-sepolia-minimal-abis.ts) |
 | Slides | [slides/sentinel-8004-submission-deck-v2.html](slides/sentinel-8004-submission-deck-v2.html) |

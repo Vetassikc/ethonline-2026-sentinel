@@ -21,7 +21,7 @@ Files: `scripts/graph-preflight.ts`, `api/app/graph-client.ts`, `api/tests/graph
 4. [x] Execute a real bounded query and record query template, variables, block provenance, retrieval time and sanitized output. Do not commit real user portfolio data.
 5. [ ] Freeze the exposure formula and supported market in SPEC using a freshness-checked valuation source. A green fixture test alone does not complete this milestone.
 
-Exit: reproducible live evidence for one policy, with known freshness and no invented fields. Current source passes position/block access but fails the USD-valuation qualification; stop UI expansion until the gap is resolved or the policy is explicitly changed.
+Exit: reproducible live evidence for one policy, with known freshness and no invented fields. Current source passes position/block access but fails the USD-valuation qualification. A read-only evidence view may expose this gap, but no authorizing permit may be issued until the policy and valuation source are explicitly qualified.
 
 ## 2. Evidence and deterministic decisions — September 6–7
 
@@ -49,15 +49,15 @@ Exit: a tampered authorization fails independently. No real-money execution.
 
 ## 4. AI + single-screen demo — September 8–10
 
-Files to add: `web/position-evidence.html`, `web/position-evidence.js`, `scripts/position-evidence.ts`, `skills/position-evidence/SKILL.md`; modify only necessary route handling in `api/app/server.ts` and styles; add `api/tests/position-evidence-routes.test.ts`.
+Files: `web/position-evidence.html`, `web/position-evidence.js`, `scripts/position-evidence.ts`, `api/app/server.ts`, `api/tests/position-evidence-routes.test.ts` and the narrow public docs.
 
-1. Implement interfaces in ROUTES with input/body validation and read-only evidence access.
-2. Give an AI client a documented restricted CLI tool; capture one genuine natural-language request, validated tool arguments and resulting evidence. A manually entered JSON request is not proof of AI integration.
-3. Build one screen: intent, query plan, source/block/freshness, gaps, decision, permit and verifier.
-4. Test malformed/oversized input and live failure behavior; check the existing `/judge` route still works.
+1. [x] Implement `GET /position-evidence` and `POST /api/position-evidence/evaluate` with input validation and read-only evidence access.
+2. [ ] Give an AI client a documented restricted CLI tool; capture one genuine natural-language request, validated tool arguments and resulting evidence. A manually entered JSON request is not proof of AI integration.
+3. [x] Build one screen for intent, source/block/freshness, gaps, normalized evidence and the fail-closed policy decision. Permit/verifier presentation remains a follow-up slice.
+4. [ ] Test malformed/oversized input and live failure behavior; route tests cover malformed intent, blocked configuration, provider errors and the existing `/judge` regression path remains green.
 5. Rehearse fresh/stale/tampered cases with explicit mode labels.
 
-Exit: judge can follow a complete live vertical slice without navigating a large dashboard.
+Exit: partial. A judge can follow the live intent → Graph source → normalized evidence → policy decision slice without navigating a large dashboard. AI invocation, permit/verifier presentation, bounded-body tests and rehearsal remain.
 
 ## 5. Freeze and submission — September 11–13
 

@@ -33,8 +33,13 @@ AI-authored/assisted files at this checkpoint:
 - api/app/evidence-permit.ts
 - api/tests/evidence-permit.test.ts
 - scripts/position-evidence.ts
+- api/app/server.ts (Position Evidence route)
+- api/tests/position-evidence-routes.test.ts
+- web/position-evidence.html
+- web/position-evidence.js
+- web/styles.css (Position Evidence layout)
 
-The new code slices remain deliberately bounded: a read-only Graph `_meta` preflight, a fixed cursor-paginated `UserReserve` adapter, normalized evidence hashing, a fail-closed quality gate and a demo-only evidence-bound EIP-712 permit/verifier. They do not implement a live valuation equation, AI runtime or UI. Running existing tests is not new test implementation. Existing repository files retain their prior provenance.
+The new code slices remain deliberately bounded: a read-only Graph `_meta` preflight, a fixed cursor-paginated `UserReserve` adapter, normalized evidence hashing, a fail-closed quality gate, a demo-only evidence-bound EIP-712 permit/verifier and a read-only evidence evaluation route/UI. They do not implement a live valuation equation, AI runtime or permit/verifier HTTP presentation. Running existing tests is not new test implementation. Existing repository files retain their prior provenance.
 
 ## Founder direction at preparation time
 

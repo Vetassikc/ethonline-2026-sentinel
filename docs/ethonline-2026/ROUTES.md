@@ -16,16 +16,16 @@
 
 Source: `api/app/server.ts` at continuity baseline. This table is not an exhaustive API inventory.
 
-## Planned new routes — not implemented
+## Event routes — delivered and remaining
 
 | Route | Request | Response / boundary |
 | --- | --- | --- |
-| `GET /position-evidence` | none | One-screen feature UI |
-| `POST /api/position-evidence/evaluate` | validated TradeIntent, allowlisted subject, mode | evidence envelope + policy result; DENY on unavailable required evidence |
-| `POST /api/position-evidence/permit` | server-issued evaluation reference | demo-signed bounded permit only for still-valid allowed evaluation |
-| `POST /api/position-evidence/verify` | permit, intent, evidence | independently validated result and stable reason codes |
+| `GET /position-evidence` | none | Delivered one-screen read-only feature UI |
+| `POST /api/position-evidence/evaluate` | validated TradeIntent; subject comes from server-side Graph configuration | Delivered evidence envelope + policy result; `DENY` on unavailable required evidence |
+| `POST /api/position-evidence/permit` | server-issued evaluation reference | Remaining: demo-signed bounded permit only for still-valid allowed evaluation |
+| `POST /api/position-evidence/verify` | permit, intent, evidence | Remaining: independently validated result and stable reason codes |
 
-HTTP 400: malformed request. HTTP 503: provider unavailable, with an explicit non-authorizing result. Policy DENY with valid inputs is a normal evaluation result. No response may contain an API key. A browser-supplied ALLOW or evidence hash is never sufficient to request signing.
+HTTP 400: malformed request. HTTP 503: provider unavailable, with an explicit non-authorizing result. Policy DENY with valid inputs is a normal evaluation result. No response may contain an API key. A browser-supplied ALLOW or evidence hash is never sufficient to request signing. The delivered evaluation route accepts a validated `TradeIntent` JSON body and does not accept arbitrary Graph URLs or browser-selected subjects.
 
 Evaluation references refer to server-held payloads with expiry. Start with bounded in-memory storage for local demo; state is lost on restart and must be labeled. Reject unknown/expired references. Do not imply durable production authorization.
 

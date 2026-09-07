@@ -1,6 +1,6 @@
 # Sentinel Position Evidence — ETHOnline 2026
 
-Prepared 2026-09-05 and updated 2026-09-07. This is the working directory for a Continuity extension of the public MIT Sentinel-8004 repository. The read-only Graph position adapter is implemented; the evidence policy and UI remain gated on a qualified valuation source.
+Prepared 2026-09-05 and updated 2026-09-07. This is the working directory for a Continuity extension of the public MIT Sentinel-8004 repository. The read-only Graph position adapter, evidence policy and fail-closed Position Evidence screen are implemented; authorization remains gated on a qualified valuation source.
 
 ## The product in one sentence
 
@@ -14,7 +14,7 @@ The demo must show a decision changing, not merely a better report. The Graph su
 2. Read [GRAPH_SETUP_GUIDE.md](docs/ethonline-2026/GRAPH_SETUP_GUIDE.md), fill the local Graph values and choose a public `GRAPH_DEMO_ACCOUNT`.
 3. Run `npm run graph:preflight`, `npm run graph:position` and then `npm run graph:evidence`. Review the returned gaps before any policy work.
 4. The normalized evidence contract is implemented in `api/app/position-evidence.ts`; run `npm test` and inspect its `position_evidence.v1` tests before extending policy.
-5. Continue milestone 3 of [PLAN.md](docs/ethonline-2026/PLAN.md). Do not build the presentation layer before the data path is qualified.
+5. Open `http://127.0.0.1:8787/position-evidence` after `npm start` to inspect the delivered read-only vertical slice. Continue the remaining milestone 4 work in [PLAN.md](docs/ethonline-2026/PLAN.md): restricted AI-tool invocation and permit/verifier presentation.
 
 ## Run the existing baseline
 
@@ -25,7 +25,7 @@ npm test
 npm start
 ```
 
-Use the local address printed by the server. Existing `/judge` is the old demonstration, not the ETHOnline evidence feature. [ROUTES.md](docs/ethonline-2026/ROUTES.md) separates existing and proposed routes.
+Use the local address printed by the server. Existing `/judge` is the old demonstration; `/position-evidence` is the ETHOnline evidence feature. [ROUTES.md](docs/ethonline-2026/ROUTES.md) separates the existing baseline from the delivered and remaining event routes.
 
 ## Working documents
 

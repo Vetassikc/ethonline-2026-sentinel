@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sentinel Position Evidence</title>
+    <meta
+      name="description"
+      content="Live, source-attributed position evidence for the Sentinel-8004 trade-permit guardrail."
+    />
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/web/styles.css" />
+  </head>
+  <body>
+    <main class="page position-evidence-page">
+      <header class="hero hero-panel">
+        <p class="eyebrow">ETHOnline 2026 · Position Evidence</p>
+        <p class="hub-back-link"><a href="/">Back to Submission Hub</a></p>
+        <h1>Turn a live position into a signed decision.</h1>
+        <p class="intro">
+          Sentinel reads one bounded Graph position query, records what the source
+          actually returned, and fails closed when freshness, valuation or
+          completeness is not proven. This screen is read-only: no wallet and no
+          trade execution are involved.
+        </p>
+        <div class="hero-proof-strip" aria-label="Evidence flow">
+          <div class="proof-step">
+            <span class="proof-step-index">1</span>
+            <div><strong>Intent</strong><p>Choose a canonical trade request.</p></div>
+          </div>
+          <div class="proof-step">
+            <span class="proof-step-index">2</span>
+            <div><strong>Source</strong><p>Fetch bounded live Graph positions.</p></div>
+          </div>
+          <div class="proof-step">
+            <span class="proof-step-index">3</span>
+            <div><strong>Evidence</strong><p>Normalize amounts, provenance and gaps.</p></div>
+          </div>
+          <div class="proof-step">
+            <span class="proof-step-index">4</span>
+            <div><strong>Gate</strong><p>Permit only when the evidence is acceptable.</p></div>
+          </div>
+        </div>
+      </header>
+
+      <section class="controls card">
+        <div class="section-heading">
+          <div>
+            <p class="section-label">Read-only evaluation</p>
+            <h2>Run one evidence refresh</h2>
+          </div>
+          <span id="source-status" class="status-pill status-pill-neutral">Ready</span>
+        </div>
+        <div class="control-row">
+          <label class="sr-only" for="scenario-select">Trade intent scenario</label>
+          <select id="scenario-select" aria-label="Trade intent scenario"></select>
+          <button id="run-button" type="button">Refresh live evidence</button>
+        </div>
+        <p id="run-summary" class="summary">
+          The selected intent is sent to the read-only evaluation route. Review the
+          returned source block and gaps before treating the result as a signal.
+        </p>
+      </section>
+
+      <section class="grid position-evidence-grid" aria-live="polite">
+        <article class="card panel position-summary-panel">
+          <div class="panel-heading">
+            <span class="panel-step">1</span>
+            <div><h2>Decision</h2><p class="panel-summary">The first thing a judge should read.</p></div>
+          </div>
+          <div id="decision-readout" class="decision-readout">
+            <span class="status-pill status-pill-neutral">Not run</span>
+            <strong>Choose an intent and refresh evidence.</strong>
+          </div>
+          <dl id="evidence-metrics" class="metric-strip evidence-metrics">
+            <div class="metric-item"><dt>Source</dt><dd>—</dd></div>
+            <div class="metric-item"><dt>Indexed block</dt><dd>—</dd></div>
+            <div class="metric-item"><dt>Observations</dt><dd>—</dd></div>
+          </dl>
+        </article>
+
+        <article class="card panel position-gaps-panel">
+          <div class="panel-heading">
+            <span class="panel-step">2</span>
+            <div><h2>Gaps and freshness</h2><p class="panel-summary">Unknowns stay visible and block authorization.</p></div>
+          </div>
+          <ul id="gap-list" class="evidence-gap-list">
+            <li class="status-note-item">No live result yet.</li>
+          </ul>
+          <p id="freshness-note" class="summary">Indexed block freshness will appear after refresh.</p>
+        </article>
+
+        <article class="card panel position-intent-panel">
+          <div class="panel-heading">
+            <span class="panel-step">3</span>
+            <div><h2>Trade intent</h2><p class="panel-summary">The request being guarded.</p></div>
+          </div>
+          <pre id="intent-panel">Loading scenarios…</pre>
+        </article>
+
+        <article class="card panel position-evidence-panel">
+          <div class="panel-heading">
+            <span class="panel-step">4</span>
+            <div><h2>Position evidence</h2><p class="panel-summary">Canonical envelope with a reproducible hash.</p></div>
+          </div>
+          <pre id="evidence-panel">Run a refresh to inspect the evidence envelope.</pre>
+        </article>
+
+        <article class="card panel position-policy-panel">
+          <div class="panel-heading">
+            <span class="panel-step">5</span>
+            <div><h2>Evidence policy</h2><p class="panel-summary">Existing trade limits are never weakened.</p></div>
+          </div>
+          <pre id="policy-panel">The policy result will appear after the source response.</pre>
+        </article>
+      </section>
+
+      <section class="notes card">
+        <h2>Reading the result</h2>
+        <ul>
+          <li>A provider response can be <code>ok</code> while evidence quality is <code>DENY</code>.</li>
+          <li><code>usd_valuation_unavailable</code> means no USD exposure is inferred from an ETH-only price field.</li>
+          <li>The evidence hash proves payload consistency, not source truth, completeness or investment safety.</li>
+          <li>This prototype does not submit transactions or hold a funded wallet key.</li>
+        </ul>
+      </section>
+    </main>
+    <script type="module" src="/web/position-evidence.js"></script>
+  </body>
+</html>

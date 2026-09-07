@@ -223,7 +223,7 @@ export type GraphPositionResult =
       details?: string;
     };
 
-type FetchLike = (
+export type GraphFetchLike = (
   input: string,
   init?: RequestInit,
 ) => Promise<{ ok: boolean; status: number; json(): Promise<GraphResponse> }>;
@@ -411,7 +411,7 @@ export async function runGraphPositionQuery(options: {
   subgraphId?: string;
   chainId?: string | number;
   account?: string;
-  fetchImpl?: FetchLike;
+  fetchImpl?: GraphFetchLike;
   timeoutMs?: number;
   pageSize?: number;
   maxPages?: number;
@@ -467,7 +467,7 @@ export async function runGraphPositionQuery(options: {
     return { status: "error", reason: "invalid_subgraph_id" };
   }
 
-  const fetchImpl = options.fetchImpl ?? (fetch as unknown as FetchLike);
+  const fetchImpl = options.fetchImpl ?? (fetch as unknown as GraphFetchLike);
   const now = options.now ?? new Date();
   const fetchedAt = now.toISOString();
   const gaps: string[] = ["usd_valuation_unavailable"];
@@ -487,7 +487,7 @@ export async function runGraphPositionQuery(options: {
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? 10_000);
-    let response: Awaited<ReturnType<FetchLike>>;
+    let response: Awaited<ReturnType<GraphFetchLike>>;
     try {
       response = await fetchImpl(endpoint, {
         method: "POST",
