@@ -1,31 +1,64 @@
-# Demo and acceptance
+# Demo and acceptance — Sentinel Exposure Graph
 
-Target duration: approximately 3 minutes. The Position Evidence route and restricted tool now deliver the intent → live Graph source → normalized evidence → policy decision slice. Permit/verifier presentation and genuine external AI invocation are still follow-up work.
+Target duration: approximately three minutes. The primary screen is
+`/exposure-graph`; the local tool and API routes are supporting inspection
+surfaces. Use a configured live source only when its provider is available.
+Never hide a live failure behind a fixture.
 
 ## Storyboard
 
-0:00–0:20 — Open `/position-evidence` and show one requested trade. Explain: “An agent can sound confident while its position data is stale. Sentinel requires evidence before authorization.”
+1. Open `/exposure-graph`. Show the exact request
+   `2.000000000000000000 wstETH`, the server-owned cap and the
+   `LIVE`/`REPLAY`/`DEMO SIGNER`/`PAPER EXECUTOR` labels.
+2. Evaluate the request. In a live run, show The Graph indexed block and the
+   same-block Base validation. The two paths converge on one wstETH asset;
+   the policy derives gross exposure, headroom and an allowed amount in
+   wstETH units. If the public RPC returns `429`, show the non-authorizing
+   error and stop; do not refresh into a fixture silently.
+3. Click the direct and Aave paths. Show each source field or contract method,
+   block, units, transformation and explicit gap state. Explain that the
+   Graph `UserReserve` relation is required and RPC validates/normalizes it.
+4. Issue the demo-only permit for the server-selected bounded amount. Show
+   its graph hash, policy version, snapshot block, expiry and audience without
+   exposing an account or signature in a public capture. Pure verification
+   does not consume the nonce.
+5. Run paper execution. The executor obtains a fresh server-owned evaluation,
+   checks the relevant conditions and consumes the nonce once.
+6. Run the labeled replay. It changes the snapshot/headroom and returns
+   `REPLAY: DENY`. Local tests separately demonstrate that a valid old
+   signature can remain verifiable while current paper execution rejects the
+   changed condition.
 
-0:20–0:55 — Use a clearly labeled stale-evidence replay for the same intent. Show indexed block time, the freshness gap and DENY. Do not disguise an injected test condition as a live network incident.
+The browser rehearsal completed this sequence against synthetic fixture data.
+That result is a UI rehearsal, not a live account or sponsor-qualification
+claim. The live source manifest and CLI acceptance must be reported separately.
 
-0:55–1:40 — Refresh through the real Graph provider. Show the fixed query's source, indexed block, freshness, normalized observations and explicit gaps. The current configured source is expected to display `DENY`; do not hard-code an ALLOW or disguise a fixture as live data.
+## Acceptance ledger
 
-1:40–2:20 — Show the bound intentHash/evidenceHash, permitted amount and expiry. Verify the permit independently. Change an amount or observation; verification must fail.
+- [x] The Graph and Base RPC qualify one narrow, attributable wstETH shared
+  dependency case at a common block when the provider is available.
+- [x] Graph removal/provider failure is non-authorizing; no old decision or
+  fixture is silently reused.
+- [x] Direct and Aave paths converge on one asset without receipt/underlying
+  double counting; debt is displayed separately.
+- [x] Fixed-point boundary tests cover cap equality, downsizing, zero headroom,
+  malformed quantities and missing paths.
+- [x] Exact request validation rejects custom accounts, chains, URLs, policy
+  overrides, unsupported assets and excessive precision.
+- [x] Permit tests cover signature/binding/expiry/amount/audience checks,
+  one-use nonce, concurrency and fresh-condition denial.
+- [x] The full narrow synthetic browser flow and responsive layout were
+  exercised without configured account data in the capture.
+- [ ] A provider-available live browser positive run remains to be refreshed
+  after the public RPC rate limit clears.
+- [ ] A genuine external natural-language AI/MCP invocation is not recorded.
+- [ ] Founder review, dependency review, clean-install reproduction, media,
+  deployment and submission remain separate gates.
 
-2:20–3:00 — Explain what existed before ETHOnline, what is new, how The Graph changes the decision, and the prototype boundary: paper execution, source limitations and no security guarantee.
+## Public wording boundary
 
-## Release acceptance
-
-- [ ] Genuine external AI client invokes the restricted tool from a natural-language request.
-- [ ] Genuine live Graph response with source identity, account/chain and freshness.
-- [ ] Unknown/stale/partial evidence denies; no silent fixture fallback.
-- [ ] Positive and downsize paths derive from documented source quantities.
-- [ ] Existing policy DENY cannot be overridden.
-- [ ] Real new permit signature, trusted signer and replay/expiry checks.
-- [ ] Tampered intent, evidence, amount and signer all fail verification.
-- [x] New evidence route works; old judge regression tests remain green.
-- [ ] Clean-install reproduction and dependency review complete.
-- [ ] README, continuity diff, AI attribution and video match actual behavior.
-- [ ] No secrets, real private portfolio data or unsupported claims in artifacts.
-
-Reputation assets after founder approval: one clear public repository entry point, a small reusable evidence-policy module, a readable limitations section and a short demonstration. Do not equate views, submissions or awards with revenue or adoption.
+Say “source-attributed signal,” “policy-based decision,” “bounded paper
+permit” and “based on configured inputs.” Do not say guaranteed, compliant by
+default, safe investment, audited, production-ready, on-chain enforced or
+verified truth. USD valuation and broad portfolio coverage are not part of
+this version.

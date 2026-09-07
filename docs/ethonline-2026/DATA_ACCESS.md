@@ -22,9 +22,16 @@ set +a
 npm run graph:preflight
 ```
 
+Node does not automatically load `.env.local`. With a Node runtime supporting
+`--env-file`, the equivalent explicit command is:
+
+```sh
+node --env-file=.env.local scripts/graph-preflight.ts
+```
+
 Set `GRAPH_CHAIN_ID` only after choosing the actual deployment; the preflight does not guess a chain from the subgraph ID.
 
-After the metadata gate passes, run `npm run graph:position` to execute the fixed, paginated `userReserves` query. This is a source adapter, not yet the evidence-policy decision. It records raw amounts, the scaled Aave supply relation, the public aToken/pool identifiers and provider `priceInEth` fields; if no verified USD valuation is available, `usd_valuation_unavailable` remains a visible gap.
+After the metadata gate passes, run `node --env-file=.env.local scripts/graph-position.ts` to execute the fixed, paginated `userReserves` query. This is a source adapter, not yet the evidence-policy decision. It records raw amounts, the scaled Aave supply relation, the public aToken/pool identifiers and provider `priceInEth` fields; if no verified USD valuation is available, `usd_valuation_unavailable` remains a visible gap.
 
 For the qualified narrow path, `scaledATokenBalance` is the Graph input to a
 same-block Base read of the aToken relation and Aave normalized income. The

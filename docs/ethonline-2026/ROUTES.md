@@ -11,32 +11,70 @@
 | `GET /api/demo/scenarios` | Existing scenario list |
 | `POST /api/demo/evaluate-intent` | Existing trade policy evaluation |
 | `POST /api/demo/run-pipeline` | Existing demonstration pipeline |
-| `POST /api/demo/verify-permit` | Existing demo verdict verification, not the new evidence verifier |
+| `POST /api/demo/verify-permit` | Existing demo verdict verification |
 | `POST /api/demo/verify-signed-intent` | Existing signed-intent verification |
 
-Source: `api/app/server.ts` at continuity baseline. This table is not an exhaustive API inventory.
+These routes are historical baseline surfaces and are kept regression-covered.
 
-## Event routes — delivered and remaining
+## Exposure Graph screen and read-only tool
 
-| Route | Request | Response / boundary |
+| Surface | Boundary |
+| --- | --- |
+| `GET /exposure-graph` | Judge-readable request, graph, policy, permit, paper and replay screen |
+| `GET /api/exposure/config` | Server-owned supported action, cap, TTL and source metadata; no credential |
+| `sentinel_exposure_graph` | Local read-only exact-schema tool around the same evaluation service |
+| `npm run --silent exposure:tool -- --describe` | Prints the restricted tool schema without contacting providers |
+
+The browser cannot select an account, chain, cap, policy, provider URL or
+signer. It submits only the validated request and opaque server references.
+The local tool is not evidence of a natural-language external model or MCP
+invocation.
+
+## Exposure API — delivered
+
+| Route | Accepted body | Response / boundary |
 | --- | --- | --- |
-| `GET /position-evidence` | none | Delivered one-screen read-only feature UI |
-| `POST /api/position-evidence/evaluate` | validated TradeIntent; subject comes from server-side Graph configuration | Delivered evidence envelope + policy result; `DENY` on unavailable required evidence |
-| `POST /api/position-evidence/permit` | server-issued evaluation reference | Remaining: demo-signed bounded permit only for still-valid allowed evaluation |
-| `POST /api/position-evidence/verify` | permit, intent, evidence | Remaining: independently validated result and stable reason codes |
+| `POST /api/exposure/evaluate` | Exact `sentinel-exposure-buy.v1` request | Graph, provenance, unit policy and opaque evaluation reference; provider failure is `503` and `DENY` |
+| `POST /api/exposure/permit` | `evaluation_ref`, optional bounded `nonce`/`audience` | Demo-only EIP-712 permit from a server-held non-denied evaluation |
+| `POST /api/exposure/verify` | Exact request and signed permit | Pure signature/binding/expiry/amount verification; does not consume a nonce |
+| `POST /api/exposure/paper-execute` | Exact request and signed permit | Fresh server-side evaluation, condition check and one-use paper execution |
+| `POST /api/exposure/replay` | `evaluation_ref` only | Explicit `REPLAY` denial with changed block/hash/headroom; never calls a provider |
 
-HTTP 400: malformed request. HTTP 503: provider unavailable, with an explicit non-authorizing result. Policy DENY with valid inputs is a normal evaluation result. No response may contain an API key. A browser-supplied ALLOW or evidence hash is never sufficient to request signing. The delivered evaluation route accepts a validated `TradeIntent` JSON body and does not accept arbitrary Graph URLs or browser-selected subjects.
+Request bodies are bounded and reject unknown fields, arbitrary subjects,
+arbitrary URLs, policy overrides and unsupported assets. A browser-supplied
+`ALLOW`, graph hash or permit is never enough to request signing. Evaluation
+references, consumed nonces and pending-account locks are bounded in-memory
+state for the local demo and are lost on restart.
 
-Evaluation references refer to server-held payloads with expiry. Start with bounded in-memory storage for local demo; state is lost on restart and must be labeled. Reject unknown/expired references. Do not imply durable production authorization.
+HTTP `400` means malformed input or an unknown/expired reference. HTTP `503`
+means provider/source unavailability and is non-authorizing. HTTP `409` means
+paper execution was rejected by current conditions, signature/nonce state or
+the pending-account boundary. A policy `DENY` with valid source input is a
+normal evaluation result.
 
-## Planned module boundaries
+## Older event route — retained compatibility slice
 
-- `graph-client.ts`: typed fixed-template request -> validated source response; no policy or signing.
-- `position-evidence.ts`: source response -> normalized envelope/hash (implemented).
-- `evidence-policy.ts`: evidence quality gate -> `DENY` or unchanged existing trade-policy result (implemented); exposure equation remains pending valuation qualification.
-- `evidence-permit.ts`: trusted server evaluation -> demo-only EIP-712 permit; independent verification recomputes intent/evidence bindings and enforces a one-use nonce boundary (implemented).
-- `scripts/position-evidence.ts`: narrow JSON tool entry point for the live envelope (implemented); AI-client wiring remains pending. No arbitrary URLs or execution capability.
-- `position-evidence-tool.ts` / `scripts/position-evidence-tool.ts`: schema-described, scenario-allowlisted AI-client boundary around the same read-only evaluation (implemented); no natural-language model runtime is bundled.
-- `web/position-evidence.js`: render server results; never authorize or hold credentials.
+| Route | Purpose |
+| --- | --- |
+| `GET /position-evidence` | Earlier read-only normalized evidence screen |
+| `POST /api/position-evidence/evaluate` | Earlier baseline TradeIntent + Graph evidence policy |
 
-Do not modify the existing TradeIntent to pretend a lending withdrawal is a supported trade. If action semantics must change, explicitly revise SPEC and add action validation before adding routes.
+The older route and `sentinel_position_evidence` tool remain available for
+regression and continuity. They are not the Exposure Graph positive-value
+workflow and must not be described as USD-qualified authorization.
+
+## Module boundaries
+
+- `api/app/graph-client.ts` — fixed The Graph query, pagination and source metadata.
+- `api/app/base-rpc.ts` — fixed Base RPC block/contract/balance validation and Ray normalization.
+- `api/app/exposure-graph.ts` — typed graph construction and provenance.
+- `api/app/exposure-policy.ts` — exact wstETH-unit accounting and cap decision.
+- `api/app/exposure-request.ts` — request schema and bounds.
+- `api/app/exposure-service.ts` — server-owned evaluation and TTL references.
+- `api/app/exposure-permit.ts` — demo EIP-712 signing and pure verification.
+- `api/app/condition-check.ts` — fresh-condition paper executor boundary.
+- `api/app/exposure-tool.ts` / `scripts/exposure-tool.ts` — restricted read-only tool.
+- `web/exposure-graph.js` — server-route rendering only; no credentials or policy authority.
+
+The Graph remains a required source for the qualified position relation. A
+missing Graph row or provider failure produces no authorizing evaluation.

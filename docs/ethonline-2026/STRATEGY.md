@@ -1,33 +1,83 @@
-# Strategy decision — 2026-09-05
+# Strategy decision — Sentinel Exposure Graph
 
-## Recommendation
+Date: September 7, 2026.
 
-Build **Sentinel Position Evidence** as a Continuity / Extend Open Source project. Keep Sentinel's trade-permit boundary; add a live evidence dependency to it. Do not rebuild the private Vartovii platform.
+## Decision: narrow GO, not broad platform expansion
 
-Primary target: **Best AI Tooling or AI Use Case with The Graph (Continuity)**. Its pool is $5,000: $2,500 / $1,500 / $1,000. The Graph has separate From Scratch and composable/standardized categories; nine total award positions are not nine positions in our pool. Qualification requires a load-bearing live Graph integration, useful processing, open-source reproducibility, and a 2–4 minute video. Fixtures alone do not qualify. [Official prize page](https://ethglobal.com/events/ethonline2026/prizes/the-graph), checked September 5.
+Continue Sentinel's public thesis as a signed trade-permit guardrail for
+autonomous trading agents. The strongest bounded event surface is now
+**Sentinel Exposure Graph**:
 
-Secondary category only if earned by the architecture: Graph's composable/standardized category. A single ordinary subgraph query is insufficient. Do not add a second product solely for a logo. No second partner is committed at preparation time.
+> Your agent sees separate positions. Sentinel shows their shared dependency
+> and limits the next bounded purchase before a paper executor accepts it.
 
-## Why this version is stronger
+This is a qualitative product decision, not a claim of global novelty, prize
+probability, adoption or revenue.
 
-The old “evidence card” ends at a report. The new feature makes evidence change authorization. Show the same requested trade denied with unavailable or stale position evidence, then permitted within explicit limits after a real refresh, then rejected by an independent verifier after tampering.
+## What the source gate established
 
-This is a strategic inference, not a guarantee of judging outcomes. Prior finalist pages show project descriptions and awards, not causal explanations of wins. The earlier research identified overlap with Graph evidence assistants and human-in-the-loop wallets. Our differentiator must therefore be executable policy and evidence binding, not “AI + sources” or a new wallet.
+The Graph deployment is useful for one qualified case on Base Mainnet: a
+wstETH direct holding and an Aave V3 wstETH supply claim converge on one
+underlying asset. The Graph provides the substantive account relation and
+scaled supply. Same-block Base RPC reads validate the public contract relation,
+decimals, scaled balance and normalized Aave supply. The graph therefore
+changes the derived wstETH-unit headroom; it is not a sponsor-branded query
+beside an RPC-only product.
+
+The result is a **NARROW GO** for token-unit exposure accounting. It is not a
+GO for USD valuation: the sampled source exposes `priceInEth`, and the oracle
+timestamp can be stale relative to the indexed block. The policy intentionally
+uses explicit wstETH units and leaves those gaps visible.
+
+Source details and public identifiers are in
+[GRAPH_SOURCE_MANIFEST.md](GRAPH_SOURCE_MANIFEST.md). The Graph prize
+requirements were checked against the [official ETHGlobal prize page](https://ethglobal.com/events/ethonline2026/prizes/the-graph);
+award outcomes remain unknown.
+
+## Why this is a stronger demo
+
+The earlier Position Evidence slice ended at a normalized evidence decision
+that could remain denied on valuation quality. The new slice makes the narrow
+source relation affect a concrete amount: direct and Aave paths are counted
+once, a fixed operator cap determines headroom, and a requested purchase is
+allowed, downsized or denied in exact wstETH units. A demo permit binds the
+graph hash and amount; a cooperating paper executor refreshes relevant
+conditions before accepting it.
+
+The differentiator is the inspectable path from source relation to bounded
+authorization, not “AI plus sources,” a trust score or a new wallet.
 
 ## Scope discipline
 
-One public demonstration account, one protocol deployment, one chain, one supported trade direction and market. Read live chain data without moving real money. An existing AI client may invoke a restricted tool; a standalone chat service and a new LLM subscription are unnecessary for the first vertical slice.
+Keep one chain, one underlying, one Aave relation, one action and one fixed
+cap. Do not add a general portfolio dashboard, arbitrary swaps, leverage,
+liquidation, autonomous rebalancing, a new chain, token issuance, EAS, World
+ID, x402, hardware wallet flow, dedicated graph database or another sponsor
+integration to the critical path.
 
-Lending-position data is a candidate source, not a confirmed integration. Keep trade authorization distinct from lending execution: this prototype can cap an ETH/USD trade using observed position exposure. It does not submit a borrow, withdraw, liquidation, or swap. Final policy inputs must follow the actual verified source schema.
+The local demo uses a cooperating paper executor and an in-memory state store.
+It does not submit trades or enforce rules on-chain. A valid signature proves
+typed-data integrity under the demo signer; it does not prove source truth,
+complete portfolio coverage or safety.
 
-Do not add EAS, World ID, x402, Ledger hardware, a new chain, mainnet deployment, token issuance, monetization, or a general dashboard to the critical path. Earlier Base Agentic Evidence remains plausible background research, but changing chains and sponsor assumptions now offers no demonstrated advantage. Proof402 is a separate pivot, not a parallel build.
+## AI boundary
 
-## Definition of a strong result
+`sentinel_exposure_graph` is a useful restricted local tool contract: the model
+or caller may provide only the versioned purchase shape, while the server
+chooses the account, chain, source, policy and signer. The CLI and schema do
+not establish a genuine external AI/MCP integration. That claim requires a
+separate recorded natural-language trace and remains an open gate.
 
-Prize outcome is unknown. Controllable outcomes are: one reproducible live workflow, a genuinely new public extension, a clear failure case, an honest baseline/new-work diff, and a short understandable demo. Seek written feedback on a specific technical question, not vague endorsement. Do not claim users, adoption, partnerships, audited security, or revenue.
+## Remaining gates
 
-## Gates
+1. Refresh one provider-available live browser run without exposing account or
+   balance data. A later repeated probe hit the public Base RPC rate limit and
+   correctly failed closed.
+2. Decide whether the event value justifies configuring a real external AI/tool
+   client. If so, record the exact request, selected tool call and explanation.
+3. Have the founder review the token-unit policy, live outputs, limitations,
+   dependency advisories and media before any push, deployment or submission.
 
-By September 6, prove source access, freshness metadata and the actual fields needed for one policy. If lending data is unsuitable, choose a simpler supported position/exposure source within the same thesis and revise SPEC before implementation. If no live Graph source works, fixtures cannot be presented as sponsor qualification. Escalate the data blocker and reassess scope rather than spending the week polishing a mock.
-
-Feature freeze September 11; reserve September 12 for reproduction and video, September 13 for final validation and submission buffer. No win probability or expected payout is estimated from last year's submission count.
+Do not infer users, partnerships, security assurance, compliance, awards or
+business traction from local tests, listings, profile state or synthetic
+rehearsal.

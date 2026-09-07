@@ -2,7 +2,7 @@
 
 ## ETHOnline 2026 working entry point
 
-This public repository is being extended during ETHOnline 2026 Continuity. The current event scope, implementation plan, route contract, live-data gate, continuity disclosure and AI attribution are collected in [START_HERE.md](START_HERE.md). The delivered Position Evidence feature is a read-only, fail-closed live Graph path; it does not authorize trades when required valuation evidence is missing.
+This public repository is being extended during ETHOnline 2026 Continuity. The current event scope, implementation plan, route contract, live-data gate, continuity disclosure and AI attribution are collected in [START_HERE.md](START_HERE.md). The primary event surface is the narrow [Sentinel Exposure Graph](docs/ethonline-2026/SPEC.md): a wstETH-unit, source-attributed policy bound with a demo-only paper executor. USD valuation, external AI/MCP invocation and production deployment are not claimed.
 
 ![Sentinel-8004 cover](assets/cover/sentinel-8004-cover.png)
 
@@ -19,7 +19,8 @@ bot is supporting proof only and does not replace the Sentinel-first thesis.
 | Demo | [sentinel-8004-judge-demo.onrender.com](https://sentinel-8004-judge-demo.onrender.com) |
 | Judge | [sentinel-8004-judge-demo.onrender.com/judge](https://sentinel-8004-judge-demo.onrender.com/judge) |
 | Operator | [sentinel-8004-judge-demo.onrender.com/operator](https://sentinel-8004-judge-demo.onrender.com/operator) |
-| Position Evidence (local/event route) | `/position-evidence` |
+| Exposure Graph (local/event route) | `/exposure-graph` |
+| Position Evidence compatibility route | `/position-evidence` |
 | Public Proof Index | [docs/PROOF_INDEX.md](docs/PROOF_INDEX.md) |
 | Shared Contract ABI Fragments | [contracts/shared-sepolia-minimal-abis.ts](contracts/shared-sepolia-minimal-abis.ts) |
 | Slides | [slides/sentinel-8004-submission-deck-v2.html](slides/sentinel-8004-submission-deck-v2.html) |
@@ -49,7 +50,9 @@ submission.
 Sentinel-8004 evaluates each trade intent before execution and returns a
 machine-readable `ALLOW`, `DENY`, or `ALLOW_WITH_DOWNSIZE` decision, with signed
 proof and a bounded execution path that can be inspected by judges and
-operators.
+operators. The ETHOnline extension adds one qualified Base/wstETH dependency
+case: direct and Aave supply paths converge on one asset, and the next
+purchase is bounded in exact wstETH units.
 
 ## Why This Is Distinct
 
@@ -178,6 +181,13 @@ Reference visuals already in the repo:
   founder-run `AgentRegistry.register(...)` calldata.
 - Canonical screenshots, slides, and artifact references are already present in
   the repository.
+- The configured Graph source and same-block Base reads qualify one narrow
+  wstETH shared-dependency case; the source manifest records its gaps.
+- `GET /exposure-graph` and the `/api/exposure/*` routes expose graph
+  provenance, exact cap arithmetic, a demo permit and a paper-executor
+  condition check.
+- The local `sentinel_exposure_graph` tool accepts one exact read-only purchase
+  shape. It is not evidence of a genuine external model or MCP invocation.
 
 ## Demo-Only Boundaries
 
@@ -199,6 +209,7 @@ Reference visuals already in the repo:
 | `/` | Hosted submission hub |
 | `/judge` | Canonical judge walkthrough with proof artifacts |
 | `/operator` | Narrow operator dry-run for composing and submitting intents |
+| `/exposure-graph` | Local/event dependency graph and bounded paper-permit walkthrough |
 
 The judge shell is intentionally read-only and judge-first.
 
@@ -236,6 +247,7 @@ Open:
 - `http://127.0.0.1:8787/`
 - `http://127.0.0.1:8787/judge`
 - `http://127.0.0.1:8787/operator`
+- `http://127.0.0.1:8787/exposure-graph`
 
 Useful commands:
 
@@ -247,6 +259,15 @@ node scripts/prepare-agent-registry-anchor.ts strategy-agent-demo
 node --test api/tests/*.test.ts
 ```
 
+For the qualified event source, load ignored local configuration explicitly:
+
+```bash
+node --env-file=.env.local scripts/graph-preflight.ts
+node --env-file=.env.local scripts/exposure-tool.ts <<'JSON'
+{"schema_version":"sentinel-exposure-buy.v1","action":"BUY_EXPOSURE","asset":"wstETH","unit":"wstETH","requested_units":"2.000000000000000000"}
+JSON
+```
+
 ## Read More
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
@@ -256,6 +277,9 @@ node --test api/tests/*.test.ts
 - [docs/KRAKEN_CLI_COMPAT.md](docs/KRAKEN_CLI_COMPAT.md)
 - [docs/SHARED_SEPOLIA.md](docs/SHARED_SEPOLIA.md)
 - [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md)
+- [docs/ethonline-2026/GRAPH_SOURCE_MANIFEST.md](docs/ethonline-2026/GRAPH_SOURCE_MANIFEST.md)
+- [docs/ethonline-2026/AI_TOOL.md](docs/ethonline-2026/AI_TOOL.md)
+- [docs/ethonline-2026/DEMO.md](docs/ethonline-2026/DEMO.md)
 - [docs/SUBMISSION_MEDIA.md](docs/SUBMISSION_MEDIA.md)
 - [docs/SUBMISSION_FORM_FINAL.md](docs/SUBMISSION_FORM_FINAL.md)
 - [assets/README.md](assets/README.md)

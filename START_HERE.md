@@ -1,31 +1,46 @@
-# Sentinel Position Evidence — ETHOnline 2026
+# Sentinel Exposure Graph — ETHOnline 2026
 
-Prepared 2026-09-05 and updated 2026-09-07. This is the working directory for a Continuity extension of the public MIT Sentinel-8004 repository. The read-only Graph position adapter, evidence policy and fail-closed Position Evidence screen are implemented; authorization remains gated on a qualified valuation source.
+Prepared September 7, 2026. This is the working directory for the Continuity
+extension of the public MIT Sentinel-8004 repository. The delivered narrow
+slice reads a configured Base account through The Graph, validates the
+same-block wstETH/Aave relation with fixed-host Base RPC reads, builds an
+attributable dependency graph, derives a wstETH-unit purchase bound, and
+enforces a demo permit at a paper executor.
+
+The live source case is qualified for this narrow token-unit workflow. USD
+valuation, a public demo-account selection, genuine external AI/MCP
+invocation, durable state, deployment and submission remain separate gates.
 
 ## The product in one sentence
 
-An AI trading assistant must obtain fresh, traceable position evidence before Sentinel issues a narrowly bounded trade permit; missing evidence blocks authorization.
+Your agent may see separate positions; Sentinel shows their shared wstETH
+dependency and limits the next bounded purchase before a cooperating paper
+executor accepts it.
 
-The demo must show a decision changing, not merely a better report. The Graph supplies live evidence; deterministic policy decides; a separate verifier checks the evidence-bound permit. This is a prototype, not investment advice, an audit, or production protection.
+This is a prototype based on configured inputs. It is not investment advice,
+an audit, a security guarantee or production execution protection.
 
 ## Start here
 
-1. Create the portal project using [PORTAL_GUIDE.md](docs/ethonline-2026/PORTAL_GUIDE.md).
-2. Read [GRAPH_SETUP_GUIDE.md](docs/ethonline-2026/GRAPH_SETUP_GUIDE.md), fill the local Graph values and choose a public `GRAPH_DEMO_ACCOUNT`.
-3. Run `npm run graph:preflight`, `npm run graph:position` and then `npm run graph:evidence`. To exercise the restricted AI-client boundary, inspect `npm run --silent graph:tool -- --describe` and pass one allowlisted scenario through stdin. Review the returned gaps before any policy work.
-4. The normalized evidence contract is implemented in `api/app/position-evidence.ts`; run `npm test` and inspect its `position_evidence.v1` tests before extending policy.
-5. Open `http://127.0.0.1:8787/position-evidence` after `npm start` to inspect the delivered read-only vertical slice. Continue the remaining milestone 4 work in [PLAN.md](docs/ethonline-2026/PLAN.md): restricted AI-tool invocation and permit/verifier presentation.
+1. Read [GRAPH_SOURCE_MANIFEST.md](docs/ethonline-2026/GRAPH_SOURCE_MANIFEST.md)
+   for the qualified Base/Aave/wstETH case and its explicit gaps.
+2. Keep `GRAPH_API_KEY`, `GRAPH_SUBGRAPH_ID`, `GRAPH_CHAIN_ID` and a deliberately
+   selected public `GRAPH_DEMO_ACCOUNT` in ignored local configuration only.
+3. Run the sanitized source checks and the exact bounded exposure request:
 
-## Run the existing baseline
+   ```sh
+   node --env-file=.env.local scripts/graph-preflight.ts
+   node --env-file=.env.local scripts/exposure-tool.ts <<'JSON'
+   {"schema_version":"sentinel-exposure-buy.v1","action":"BUY_EXPOSURE","asset":"wstETH","unit":"wstETH","requested_units":"2.000000000000000000"}
+   JSON
+   ```
 
-Node 22.18.0 was used for verification. Dependencies are already installed locally.
-
-```sh
-npm test
-npm start
-```
-
-Use the local address printed by the server. Existing `/judge` is the old demonstration; `/position-evidence` is the ETHOnline evidence feature. [ROUTES.md](docs/ethonline-2026/ROUTES.md) separates the existing baseline from the delivered and remaining event routes.
+   Summarize status, block metadata and reason codes; do not paste the live
+   account, balances or credentials into chat or committed artifacts.
+4. Run `npm test`, then start the local server with the explicit env file:
+   `node --env-file=.env.local api/app/server.ts`.
+5. Open `http://127.0.0.1:8787/exposure-graph` for the new judge-readable
+   screen. `/position-evidence` remains the older evidence-only route.
 
 ## Working documents
 
@@ -34,13 +49,14 @@ Use the local address printed by the server. Existing `/judge` is the old demons
 - [Implementation plan](docs/ethonline-2026/PLAN.md)
 - [Routes and interfaces](docs/ethonline-2026/ROUTES.md)
 - [Data access and feasibility gate](docs/ethonline-2026/DATA_ACCESS.md)
-- [Graph setup for beginners](docs/ethonline-2026/GRAPH_SETUP_GUIDE.md)
 - [Verified Graph source manifest](docs/ethonline-2026/GRAPH_SOURCE_MANIFEST.md)
-- [Portal instructions and submission drafts](docs/ethonline-2026/PORTAL_GUIDE.md)
-- [Demo and acceptance checklist](docs/ethonline-2026/DEMO.md)
+- [Graph setup for beginners](docs/ethonline-2026/GRAPH_SETUP_GUIDE.md)
 - [Restricted AI tool contract](docs/ethonline-2026/AI_TOOL.md)
+- [Demo and acceptance checklist](docs/ethonline-2026/DEMO.md)
 - [Current status and blockers](docs/ethonline-2026/STATUS.md)
 - [Continuity disclosure](CONTINUITY.md)
 - [AI attribution](AI_ATTRIBUTION.md)
 
-Historical submission copy elsewhere in this repository describes earlier work. It must not be reused as an ETHOnline completion claim. These documents govern the new feature; root AGENTS.md remains the repository instruction source.
+Historical submission copy elsewhere in this repository describes earlier
+work. It must not be reused as an Exposure Graph completion claim. Root
+`AGENTS.md` remains the repository instruction source.

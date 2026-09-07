@@ -21,10 +21,11 @@ Print its schema with:
 npm run --silent exposure:tool -- --describe
 ```
 
-Run the local restricted CLI with:
+Run the local restricted CLI with an explicitly loaded ignored environment
+file (Node does not automatically load `.env.local`):
 
 ```sh
-printf '%s\n' '{"schema_version":"sentinel-exposure-buy.v1","action":"BUY_EXPOSURE","asset":"wstETH","unit":"wstETH","requested_units":"2.000000000000000000"}' | npm run --silent exposure:tool
+printf '%s\n' '{"schema_version":"sentinel-exposure-buy.v1","action":"BUY_EXPOSURE","asset":"wstETH","unit":"wstETH","requested_units":"2.000000000000000000"}' | node --env-file=.env.local scripts/exposure-tool.ts
 ```
 
 The tool returns the validated request, fixed Graph/RPC query plan, source-
@@ -63,12 +64,13 @@ validated request, a fixed query plan and the same evidence/policy result as
 `POST /api/position-evidence/evaluate`:
 
 ```sh
-printf '%s\n' '{"scenario":"allow-btc-buy"}' | npm run --silent graph:tool
+printf '%s\n' '{"scenario":"allow-btc-buy"}' | node --env-file=.env.local scripts/position-evidence-tool.ts
 ```
 
-The command uses the server-side `.env.local` Graph configuration. It never
-prints the API key. A blocked configuration or provider failure is returned as
-a non-authorizing result and exits with status `2`.
+The command reads `process.env`; the explicit `--env-file` flag supplies the
+ignored local configuration. It never prints the API key. A blocked
+configuration or provider failure is returned as a non-authorizing result and
+exits with status `2`.
 
 ## Natural-language handoff
 
