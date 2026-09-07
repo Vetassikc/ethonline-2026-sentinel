@@ -22,6 +22,7 @@
     "graph:preflight": "node scripts/graph-preflight.ts",
     "graph:position": "node scripts/graph-position.ts",
     "graph:evidence": "node scripts/position-evidence.ts",
+    "graph:tool": "node scripts/position-evidence-tool.ts",
     "slides:pdf": "bash scripts/export-slides-pdf.sh",
     "test": "node --test api/tests/*.test.ts"
   },

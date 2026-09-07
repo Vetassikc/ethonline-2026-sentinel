@@ -6,7 +6,7 @@
 - Baseline SHA: `dbd9a779bdea5b4f1f93dc13f52ea309c76b7142`.
 - Local branch: `ethonline-2026/position-evidence`.
 - `npm ci --ignore-scripts` completed using the lockfile.
-- `npm test`: 102 tests passed, zero failures/skips.
+- `npm test`: 106 tests passed, zero failures/skips.
 - Dashboard: attendance confirmed and Continuity already selected.
 - ETHGlobal project profile is saved and linked to the public repository; final submission remains disabled.
 - Current Graph target and event deadline rechecked against official pages.
@@ -20,10 +20,11 @@
 - `api/app/evidence-policy.ts` now applies the evidence quality gate and preserves the existing `ALLOW`, `ALLOW_WITH_DOWNSIZE` or `DENY` result only when evidence quality is accepted; invalid or gapped evidence fails closed.
 - `api/app/evidence-permit.ts` now issues a demo-only EIP-712 permit bound to intent/evidence hashes, subject, amount, audience, expiry and nonce; its verifier independently recomputes bindings and consumes a nonce once.
 - `GET /position-evidence` and `POST /api/position-evidence/evaluate` now expose a read-only, fail-closed vertical slice. The screen renders the selected intent, live source/block/freshness metadata, normalized evidence, explicit gaps and the policy result without holding credentials or submitting transactions.
+- `sentinel_position_evidence` is now a schema-described, scenario-allowlisted CLI boundary for an existing AI client; it returns the fixed query plan plus the same evidence/policy result and rejects arbitrary fields, subjects and URLs.
 
 ## Not done
 
-No qualified live valuation equation, AI tool integration, permit/verify HTTP routes or final evidence capture. The evidence quality gate, demo-only evidence-bound permit and read-only evidence screen are implemented, but the configured source is conditionally viable for position observations and deterministic evidence packaging, not yet qualified for a USD-based permit policy: it exposes `priceInEth` and the sampled oracle timestamps were stale. No public demo account is frozen in the repository. No hosting deployment, wallet transaction or outbound message.
+No qualified live valuation equation, external model/MCP invocation, permit/verify HTTP routes or final evidence capture. The schema-described restricted tool, evidence quality gate, demo-only evidence-bound permit and read-only evidence screen are implemented, but the configured source is conditionally viable for position observations and deterministic evidence packaging, not yet qualified for a USD-based permit policy: it exposes `priceInEth` and the sampled oracle timestamps were stale. No public demo account is frozen in the repository. No hosting deployment, wallet transaction or outbound message.
 
 Existing test success is baseline regression evidence only. It does not validate the proposed feature, live credentials, source correctness, current deployments or sponsor qualification.
 
@@ -33,7 +34,7 @@ Existing test success is baseline regression evidence only. It does not validate
 
 ## Next development action
 
-Complete the remaining PLAN milestone 4 work: document and exercise a restricted AI tool, then decide whether permit/verify HTTP presentation is necessary for the submission. Keep live valuation gaps fail closed. Required founder action: review the live envelope and its `DENY` gaps. Never paste secrets into chat.
+Complete the remaining PLAN milestone 4 work: exercise the restricted tool from a genuine natural-language AI request, then decide whether permit/verify HTTP presentation is necessary for the submission. Keep live valuation gaps fail closed. Required founder action: review the live envelope and its `DENY` gaps. Never paste secrets into chat.
 
 ## Authority boundary
 

@@ -1,6 +1,6 @@
 # Demo and acceptance
 
-Target duration: approximately 3 minutes. The Position Evidence route now delivers the intent → live Graph source → normalized evidence → policy decision slice. Permit/verifier presentation and genuine AI invocation are still follow-up work.
+Target duration: approximately 3 minutes. The Position Evidence route and restricted tool now deliver the intent → live Graph source → normalized evidence → policy decision slice. Permit/verifier presentation and genuine external AI invocation are still follow-up work.
 
 ## Storyboard
 
@@ -16,7 +16,7 @@ Target duration: approximately 3 minutes. The Position Evidence route now delive
 
 ## Release acceptance
 
-- [ ] Genuine AI client invokes the restricted tool from a natural-language request.
+- [ ] Genuine external AI client invokes the restricted tool from a natural-language request.
 - [ ] Genuine live Graph response with source identity, account/chain and freshness.
 - [ ] Unknown/stale/partial evidence denies; no silent fixture fallback.
 - [ ] Positive and downsize paths derive from documented source quantities.

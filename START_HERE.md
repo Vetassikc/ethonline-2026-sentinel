@@ -12,7 +12,7 @@ The demo must show a decision changing, not merely a better report. The Graph su
 
 1. Create the portal project using [PORTAL_GUIDE.md](docs/ethonline-2026/PORTAL_GUIDE.md).
 2. Read [GRAPH_SETUP_GUIDE.md](docs/ethonline-2026/GRAPH_SETUP_GUIDE.md), fill the local Graph values and choose a public `GRAPH_DEMO_ACCOUNT`.
-3. Run `npm run graph:preflight`, `npm run graph:position` and then `npm run graph:evidence`. Review the returned gaps before any policy work.
+3. Run `npm run graph:preflight`, `npm run graph:position` and then `npm run graph:evidence`. To exercise the restricted AI-client boundary, inspect `npm run --silent graph:tool -- --describe` and pass one allowlisted scenario through stdin. Review the returned gaps before any policy work.
 4. The normalized evidence contract is implemented in `api/app/position-evidence.ts`; run `npm test` and inspect its `position_evidence.v1` tests before extending policy.
 5. Open `http://127.0.0.1:8787/position-evidence` after `npm start` to inspect the delivered read-only vertical slice. Continue the remaining milestone 4 work in [PLAN.md](docs/ethonline-2026/PLAN.md): restricted AI-tool invocation and permit/verifier presentation.
 
@@ -38,6 +38,7 @@ Use the local address printed by the server. Existing `/judge` is the old demons
 - [Verified Graph source manifest](docs/ethonline-2026/GRAPH_SOURCE_MANIFEST.md)
 - [Portal instructions and submission drafts](docs/ethonline-2026/PORTAL_GUIDE.md)
 - [Demo and acceptance checklist](docs/ethonline-2026/DEMO.md)
+- [Restricted AI tool contract](docs/ethonline-2026/AI_TOOL.md)
 - [Current status and blockers](docs/ethonline-2026/STATUS.md)
 - [Continuity disclosure](CONTINUITY.md)
 - [AI attribution](AI_ATTRIBUTION.md)

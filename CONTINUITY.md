@@ -16,11 +16,11 @@ Baseline policy verdict signatures are deterministic demo artifacts; they are di
 
 ## New work completed September 5–7
 
-Local isolation, baseline verification and the planning/documentation package: START_HERE.md, CONTINUITY.md, AI_ATTRIBUTION.md and docs/ethonline-2026/*.md. The new read-only `scripts/graph-preflight.ts` command and `api/app/graph-client.ts` adapter verify sanitized Graph `_meta` metadata and bounded account-level `UserReserve` observations. `api/app/position-evidence.ts` now emits the normalized, hashed `position_evidence.v1` envelope; `api/app/evidence-policy.ts` applies its fail-closed quality gate; and `api/app/evidence-permit.ts` issues and independently verifies a demo-only EIP-712 permit with a one-use nonce boundary. The delivered `GET /position-evidence` and `POST /api/position-evidence/evaluate` route/UI slice makes the source, gaps and policy decision judge-visible. The live sample still exposes an explicit USD-valuation gap and stale-oracle gap, so no live permit is issued and no production safety claim is made.
+Local isolation, baseline verification and the planning/documentation package: START_HERE.md, CONTINUITY.md, AI_ATTRIBUTION.md and docs/ethonline-2026/*.md. The new read-only `scripts/graph-preflight.ts` command and `api/app/graph-client.ts` adapter verify sanitized Graph `_meta` metadata and bounded account-level `UserReserve` observations. `api/app/position-evidence.ts` now emits the normalized, hashed `position_evidence.v1` envelope; `api/app/evidence-policy.ts` applies its fail-closed quality gate; and `api/app/evidence-permit.ts` issues and independently verifies a demo-only EIP-712 permit with a one-use nonce boundary. The delivered `GET /position-evidence` and `POST /api/position-evidence/evaluate` route/UI slice makes the source, gaps and policy decision judge-visible. The delivered `sentinel_position_evidence` CLI boundary exposes only allowlisted scenarios to an existing AI client; it does not bundle a model runtime. The live sample still exposes an explicit USD-valuation gap and stale-oracle gap, so no live permit is issued and no production safety claim is made.
 
 ## Planned new work, not yet delivered
 
-Qualified valuation mapping, exposure equation, restricted AI tool and permit/verifier presentation remain. Move items here into a completed ledger only with actual file paths, commits and verification evidence.
+Qualified valuation mapping, exposure equation, genuine external AI invocation and permit/verifier presentation remain. Move items here into a completed ledger only with actual file paths, commits and verification evidence.
 
 ## Verify the boundary
 

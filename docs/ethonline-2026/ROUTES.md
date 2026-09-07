@@ -36,6 +36,7 @@ Evaluation references refer to server-held payloads with expiry. Start with boun
 - `evidence-policy.ts`: evidence quality gate -> `DENY` or unchanged existing trade-policy result (implemented); exposure equation remains pending valuation qualification.
 - `evidence-permit.ts`: trusted server evaluation -> demo-only EIP-712 permit; independent verification recomputes intent/evidence bindings and enforces a one-use nonce boundary (implemented).
 - `scripts/position-evidence.ts`: narrow JSON tool entry point for the live envelope (implemented); AI-client wiring remains pending. No arbitrary URLs or execution capability.
+- `position-evidence-tool.ts` / `scripts/position-evidence-tool.ts`: schema-described, scenario-allowlisted AI-client boundary around the same read-only evaluation (implemented); no natural-language model runtime is bundled.
 - `web/position-evidence.js`: render server results; never authorize or hold credentials.
 
 Do not modify the existing TradeIntent to pretend a lending withdrawal is a supported trade. If action semantics must change, explicitly revise SPEC and add action validation before adding routes.

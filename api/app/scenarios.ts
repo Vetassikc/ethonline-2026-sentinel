@@ -19,7 +19,7 @@ const SCENARIO_NAMES = [
   "fail-closed-oracle",
 ] as const;
 
-type ScenarioName = (typeof SCENARIO_NAMES)[number];
+export type ScenarioName = (typeof SCENARIO_NAMES)[number];
 
 const ROOT_DIR = new URL("../../", import.meta.url);
 

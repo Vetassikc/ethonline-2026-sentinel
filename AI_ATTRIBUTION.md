@@ -2,7 +2,7 @@
 
 ## September 5–7 implementation
 
-Tool: OpenAI Codex. Assistance: review of supplied prior research, current official pages and existing public source; local project setup; documentation drafting; running existing checks.
+Tool: OpenAI Codex. Assistance: review of supplied prior research, current official pages and existing public source; local project setup; documentation drafting; implementation drafts; running existing checks.
 
 AI-authored/assisted files at this checkpoint:
 
@@ -38,8 +38,12 @@ AI-authored/assisted files at this checkpoint:
 - web/position-evidence.html
 - web/position-evidence.js
 - web/styles.css (Position Evidence layout)
+- api/app/position-evidence-tool.ts
+- api/tests/position-evidence-tool.test.ts
+- scripts/position-evidence-tool.ts
+- docs/ethonline-2026/AI_TOOL.md
 
-The new code slices remain deliberately bounded: a read-only Graph `_meta` preflight, a fixed cursor-paginated `UserReserve` adapter, normalized evidence hashing, a fail-closed quality gate, a demo-only evidence-bound EIP-712 permit/verifier and a read-only evidence evaluation route/UI. They do not implement a live valuation equation, AI runtime or permit/verifier HTTP presentation. Running existing tests is not new test implementation. Existing repository files retain their prior provenance.
+The new code slices remain deliberately bounded: a read-only Graph `_meta` preflight, a fixed cursor-paginated `UserReserve` adapter, normalized evidence hashing, a fail-closed quality gate, a demo-only evidence-bound EIP-712 permit/verifier, a read-only evidence evaluation route/UI and a scenario-allowlisted CLI tool contract. They do not implement a live valuation equation, external AI runtime or permit/verifier HTTP presentation. Running existing tests is not new test implementation. Existing repository files retain their prior provenance.
 
 ## Founder direction at preparation time
 

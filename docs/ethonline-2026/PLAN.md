@@ -49,10 +49,10 @@ Exit: a tampered authorization fails independently. No real-money execution.
 
 ## 4. AI + single-screen demo — September 8–10
 
-Files: `web/position-evidence.html`, `web/position-evidence.js`, `scripts/position-evidence.ts`, `api/app/server.ts`, `api/tests/position-evidence-routes.test.ts` and the narrow public docs.
+Files: `web/position-evidence.html`, `web/position-evidence.js`, `scripts/position-evidence.ts`, `scripts/position-evidence-tool.ts`, `api/app/position-evidence-tool.ts`, `api/app/server.ts`, `api/tests/position-evidence-routes.test.ts`, `api/tests/position-evidence-tool.test.ts` and the narrow public docs.
 
 1. [x] Implement `GET /position-evidence` and `POST /api/position-evidence/evaluate` with input validation and read-only evidence access.
-2. [ ] Give an AI client a documented restricted CLI tool; capture one genuine natural-language request, validated tool arguments and resulting evidence. A manually entered JSON request is not proof of AI integration.
+2. [x] Give an AI client a documented restricted CLI tool with an explicit schema and allowlisted scenarios. Capture one genuine natural-language request, validated tool arguments and resulting evidence before claiming external AI integration; a manually entered JSON request alone is not proof.
 3. [x] Build one screen for intent, source/block/freshness, gaps, normalized evidence and the fail-closed policy decision. Permit/verifier presentation remains a follow-up slice.
 4. [ ] Test malformed/oversized input and live failure behavior; route tests cover malformed intent, blocked configuration, provider errors and the existing `/judge` regression path remains green.
 5. Rehearse fresh/stale/tampered cases with explicit mode labels.
