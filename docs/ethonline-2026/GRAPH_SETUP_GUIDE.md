@@ -106,6 +106,8 @@ GRAPH_DEMO_ACCOUNT=0xYOUR_PUBLIC_ADDRESS npm run graph:position
 
 Do not use `GRAPH_DEMO_ACCOUNT=...` on a line by itself without `export`; a non-exported shell variable is not passed to the Node process. If the command changes to `status: "ok"` with `observations: 0`, the address was loaded successfully but has no indexed `UserReserve` rows in this deployment; choose another deliberately public demo account rather than treating an empty portfolio as evidence.
 
+An empty `observations` array is therefore a successful, complete query of an empty result—not a zero-balance proof and not an indexing failure. `valuation.unit: "ETH"` means the selected deployment exposes oracle values in its provider-specific ETH scale. It does not provide a verified USD valuation; keep `usd_valuation_unavailable` visible until a separate, freshness-checked valuation source is added.
+
 ## What we need after preflight
 
 The preflight only checks `_meta`; it does not prove account positions. The next query must identify:
