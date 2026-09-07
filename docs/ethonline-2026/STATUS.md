@@ -45,7 +45,7 @@
 - `npm test` passes `167` tests with zero failures, skips or todos. The UI
   contract test passes `3/3`; JavaScript syntax and `git diff --check` pass.
 
-## FACT — known source limitation
+## FACT — bounded diagnosis and live paper gate
 
 The default public Base RPC still returned the sanitized `rpc_rate_limited`
 category during the earlier refresh. With the configured HTTPS override, the
@@ -63,10 +63,54 @@ executor deliberately remained fail-closed during fresh refreshes: the first
 permit returned `CURRENT_HEADROOM_INSUFFICIENT`, and the second returned
 `CURRENT_SOURCE_UNAVAILABLE` with HTTP `409`. No live transaction was sent.
 
-The live evaluation and permit gates are therefore refreshed, but a
-provider-stable successful paper-executor run is not claimed by this status
-file. The custom provider's intermittent historical-read consistency remains
-an explicit acceptance limitation.
+The live evaluation and permit gates were refreshed. One bounded HTTP route
+run then recorded a successful paper-executor path: a fresh
+`0.500000000000000000 wstETH` request returned
+`ALLOW`, a new permit verified with all executable checks, the first paper
+execution returned `PAPER_EXECUTED`, and a second execution of that same permit
+returned `NONCE_ALREADY_USED` with HTTP `409`. This remained paper-only; no
+wallet transaction was sent.
+
+The two earlier denial codes were diagnosed separately. For
+`CURRENT_HEADROOM_INSUFFICIENT`, the local diagnostic compared the original
+and refreshed exposure, normalized Aave supply, headroom, allowed amount and
+signed amount as exact integers. In a bounded live full-headroom control pair,
+the original and refreshed exposure/headroom/allowed/signed values were equal
+at the raw-unit level and normalized Aave supply changed by `0` raw units.
+The older browser failure did not retain the fresh evaluation payload behind
+the route wrapper, so Aave accrual is not a demonstrated cause; it remains an
+unverified hypothesis rather than a provider or policy conclusion.
+
+For `CURRENT_SOURCE_UNAVAILABLE`, the underlying sanitized adapter result was
+`rpc_aave_balance_mismatch`, not the wrapper code alone. A same-block local
+trace reproduced the strict consistency failure twice: the `rayMul`-derived
+normalized Aave supply exceeded the `aToken.balanceOf` result by exactly one
+raw unit. This demonstrates that the adapter's source-consistency predicate
+failed; whether the one-unit divergence comes from historical-read semantics,
+on-chain rounding/timing or another upstream detail remains unverified. Full
+account-specific integer tuples and all credentials stayed out of committed
+artifacts.
+
+The custom provider's intermittent historical-read consistency remains an
+explicit acceptance limitation even though the bounded positive route gate
+passed.
+
+## FACT — fixture and boundary negatives
+
+- The existing fixture condition test demonstrates a valid old permit being
+  rejected as `CURRENT_HEADROOM_INSUFFICIENT` when current headroom is zero;
+  this validates the authorization-drift branch without presenting it as live
+  Aave evidence.
+- A separate request-boundary check rejected
+  `10.000000000000000001` with the bounded maximum error. This is distinct from
+  same-permit replay rejection and from live source availability.
+
+One in-session model-to-local-contract invocation also mapped a natural-language
+intent to the restricted `sentinel_exposure_graph` schema while keeping account,
+policy, provider, signing and execution server-owned. That live read returned
+fail-closed `DENY` with `rpc_aave_balance_mismatch`; it demonstrates the
+authority boundary and sanitized failure path, not a successful external
+AI/MCP integration.
 
 ## UNKNOWN or explicitly not delivered
 
@@ -74,11 +118,16 @@ an explicit acceptance limitation.
   and the sampled stale oracle timestamp do not justify a USD risk model.
 - No public demo account is frozen in the repository. The configured account
   remains operator-owned local configuration.
-- No genuine external natural-language AI/MCP invocation has been exercised.
-  The local restricted CLI is a tool contract and regression boundary, not
-  evidence of model selection or MCP connectivity.
-- A successful live paper-executor refresh has not been recorded; the observed
-  `409` outcomes remained non-authorizing and did not submit a transaction.
+- No genuine external natural-language AI/MCP integration has been exercised.
+  The in-session model-to-local-contract trace above is not evidence of model
+  selection through an external client or MCP connectivity.
+- Provider-stable repeatability of the live paper-executor success is not
+  established. The bounded successful route run and the separate fail-closed
+  source/headroom observations must not be generalized beyond this narrow
+  attempt.
+- The exact root cause of the earlier `CURRENT_HEADROOM_INSUFFICIENT` browser
+  observation remains unverified because its refreshed evaluation payload was
+  not retained by the wrapper.
 - Evaluation references, pending-account locks and consumed nonces are
   process-local in-memory state and disappear on restart.
 - No production deployment, wallet transaction, live trade, portal
@@ -97,9 +146,9 @@ dependency mutation was performed.
 
 ## Next bounded actions
 
-1. If full live paper-executor evidence is still worth the event scope, use a
-   provider with stable historical reads and repeat the bounded browser flow;
-   do not weaken the fresh-condition gate or fall back to a fixture.
+1. If stronger repeatability is still worth the event scope, investigate the
+   one-unit historical-read mismatch with a bounded source trace; do not
+   weaken the fresh-condition gate, exact arithmetic or fall back to a fixture.
 2. If desired, configure and record a genuine external AI/tool trace without
    granting the model control of account, policy, URLs, signing or execution.
 3. Founder reviews this narrow action policy and decides whether further

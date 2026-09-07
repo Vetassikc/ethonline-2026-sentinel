@@ -52,9 +52,10 @@ claim. The live source manifest and CLI acceptance must be reported separately.
 - [x] A provider-available live browser evaluation and permit verification were
   refreshed with a server-configured HTTPS Base RPC; direct and Aave paths
   were inspected against the same live block.
-- [ ] A provider-stable successful fresh paper-executor run remains
-  unrecorded. The observed live refreshes returned non-authorizing `409`
-  outcomes (`CURRENT_HEADROOM_INSUFFICIENT` or `CURRENT_SOURCE_UNAVAILABLE`).
+- [x] One bounded live HTTP paper-executor run returned `PAPER_EXECUTED`; a
+  second execution of the same permit returned `NONCE_ALREADY_USED` with
+  `409`. This is paper-only evidence, not a wallet transaction or a claim of
+  provider-stable repeatability.
 - [ ] A genuine external natural-language AI/MCP invocation is not recorded.
 - [ ] Founder review, dependency review, clean-install reproduction, media,
   deployment and submission remain separate gates.
