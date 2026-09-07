@@ -42,8 +42,12 @@
   paper executor and labeled replay. A synthetic browser rehearsal completed
   the full flow at narrow width; it is explicitly `FIXTURE`/`REPLAY`, not live
   portfolio evidence.
-- `npm test` passes `167` tests with zero failures, skips or todos. The UI
+- `npm test` passes `171` tests with zero failures, skips or todos. The UI
   contract test passes `3/3`; JavaScript syntax and `git diff --check` pass.
+- The smallest external-client path is implemented locally as a native-fetch
+  OpenAI Responses wrapper around `sentinel_exposure_graph`; focused tests pass
+  `4/4`. It is bounded to two AI requests, one read-only local tool call and
+  no signing or execution route.
 
 ## FACT — bounded diagnosis and live paper gate
 
@@ -95,6 +99,36 @@ The custom provider's intermittent historical-read consistency remains an
 explicit acceptance limitation even though the bounded positive route gate
 passed.
 
+## FACT — deployed Aave arithmetic inspection
+
+- The inspected Base proxy slots resolved to the official Aave V3 Base
+  implementations: aToken implementation
+  `0x273e4b97c3f5280aff4949aa19a27ff54968458d` and Pool implementation
+  `0xa4abc5fcba6d0d7e3d144d6dbf6cb6128599dfdb`. The public address book lists
+  the same Base implementation addresses and the wstETH reserve addresses.
+- The deployed aToken `POOL()` and `UNDERLYING_ASSET_ADDRESS()` getters, plus
+  Pool `getReserveData().aTokenAddress`, matched the expected Base Pool,
+  wstETH underlying and wstETH aToken. This is an identity check, not a
+  permission to trust an arbitrary contract.
+- At a fresh same-block control snapshot, the Graph block equaled the RPC
+  block and every relevant `eth_call` carried the same explicit block tag.
+  On-chain `getReserveNormalizedIncome` exactly matched the Aave formula: the
+  same-block timestamp branch returns the stored liquidity index; otherwise
+  linear interest uses `rate * elapsed / 365 days` with integer floor and then
+  Ray multiplication. The aToken balance exactly matched
+  `rayMul(scaledBalance, normalizedIncome)` at that control block.
+- The official implementation uses half-up Ray multiplication,
+  `(a * b + HALF_RAY) / RAY`; no tolerance or bypass was introduced. The
+  earlier `+1` observation therefore remains an unresolved read/result
+  divergence, not evidence that the deployed arithmetic should be weakened.
+  A later attempt to re-read the old historical block returned a sanitized
+  JSON-RPC `-32602` on a proxy call, so the old block cannot currently be used
+  as a conclusive contract-level reproduction. References: the [Aave Base
+  address book](https://github.com/aave-dao/aave-address-book/blob/main/src/AaveV3Base.sol),
+  [AToken balance arithmetic](https://github.com/aave/aave-v3-core/blob/master/contracts/protocol/tokenization/AToken.sol),
+  [ReserveLogic normalized income](https://github.com/aave/aave-v3-core/blob/master/contracts/protocol/libraries/logic/ReserveLogic.sol),
+  and [WadRayMath rounding](https://github.com/aave/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/math/WadRayMath.sol).
+
 ## FACT — fixture and boundary negatives
 
 - The existing fixture condition test demonstrates a valid old permit being
@@ -111,6 +145,11 @@ policy, provider, signing and execution server-owned. That live read returned
 fail-closed `DENY` with `rpc_aave_balance_mismatch`; it demonstrates the
 authority boundary and sanitized failure path, not a successful external
 AI/MCP integration.
+
+The external-client implementation is a prepared integration boundary, not
+live acceptance evidence. No external API request was run in this step because
+the local environment has no AI-client credential configured and API usage may
+incur charges requiring explicit approval.
 
 ## UNKNOWN or explicitly not delivered
 

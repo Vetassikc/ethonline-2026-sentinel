@@ -69,6 +69,8 @@ to use a stale or synthetic live result.
 
 ## 5. Genuine AI boundary — not yet evidenced
 
+- [x] Add a bounded optional OpenAI Responses client around the existing
+  `sentinel_exposure_graph` contract without adding an SDK or execution path.
 - [ ] Configure an existing external AI client or MCP integration, if useful,
   without installing a broad platform or exposing credentials.
 - [ ] Capture the actual natural-language request, model-selected tool call,

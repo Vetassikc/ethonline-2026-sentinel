@@ -45,6 +45,40 @@ The local CLI invocation is not evidence of a genuine external model/MCP
 trace. This repository must not claim a natural-language AI interaction until
 a configured client performs that request and the founder records the trace.
 
+## Minimal external client — OpenAI Responses API
+
+The repository now includes a bounded optional client at
+`scripts/openai-exposure-client.ts`. It uses the OpenAI Responses API with one
+function definition copied from the existing `sentinel_exposure_graph`
+contract. The first request lets the model translate natural language into
+the exact request shape; the local process validates and runs the existing
+read-only tool; the second request gives the model only sanitized policy and
+source fields for a short explanation. The client makes at most two external
+AI requests, one local tool call and no retries. It never imports signing or
+paper-execution routes.
+
+The external call is not acceptance evidence until it is run with founder
+approval for possible API usage charges. Setup is local only:
+
+1. In the OpenAI Platform API keys page, create or select a key. Do not paste
+   it into chat or commit it.
+2. Add the key to the ignored local `.env.local` as `OPENAI_API_KEY=...` and,
+   if needed, set `OPENAI_MODEL=...` to a tool-calling model enabled for the
+   account. The client uses the fixed official Responses endpoint and does not
+   accept a model-supplied URL.
+3. Run one bounded request:
+
+```sh
+node --env-file=.env.local scripts/openai-exposure-client.ts \
+  "Check whether a bounded 0.5 wstETH exposure purchase is allowed."
+```
+
+Expected successful output contains `status: "ok"`,
+`model_tool_call.name: "sentinel_exposure_graph"`, a sanitized `tool_result`
+with source/policy fields, and `model_response`. A missing key returns a
+sanitized `missing_configuration` result; a live Graph/RPC failure remains a
+non-authorizing tool result and must not be rewritten as success.
+
 ## Compatibility position-evidence tool
 
 `sentinel_position_evidence` is the narrow tool contract for an existing AI
