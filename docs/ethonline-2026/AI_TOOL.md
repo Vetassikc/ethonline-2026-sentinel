@@ -106,6 +106,15 @@ returned a function call. It therefore did not demonstrate the required
 natural-language → actual tool call → source-backed response chain. No retry
 was made, and the `429` is not treated as a policy or source result.
 
+After explicit approval, one bounded OpenRouter attempt used
+`google/gemini-3.8-flash`. Its sanitized result was
+`code: "model_did_not_call_tool"`: the first model response contained no
+`sentinel_exposure_graph` call, so no local tool execution, source-backed
+result or second explanation request occurred. An initial blocked response
+reported the wrong provider label; that local diagnostic bug was corrected and
+covered by a regression test. This attempt is not external acceptance
+evidence, and no retry was made.
+
 Google AI Studio creates a separate Gemini API key, not a ChatGPT/OpenAI key.
 The direct Google AI Studio OpenAI-compatibility endpoint is intentionally not
 another provider in this acceptance slice; adding it would require a separate

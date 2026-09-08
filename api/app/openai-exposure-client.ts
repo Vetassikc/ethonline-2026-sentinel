@@ -355,36 +355,38 @@ export async function runOpenAIExposureClient(
   if (!first.ok) return first.result;
 
   const calls = functionCalls(first.response);
-  if (calls.length === 0) return blocked("model_did_not_call_tool", ["The model returned no function call."]);
+  if (calls.length === 0) {
+    return blocked("model_did_not_call_tool", ["The model returned no function call."], undefined, client);
+  }
   if (calls.length !== 1 || calls[0]!.name !== EXPOSURE_GRAPH_TOOL_NAME) {
-    return blocked("unexpected_tool_call", ["The model selected an unsupported tool call."]);
+    return blocked("unexpected_tool_call", ["The model selected an unsupported tool call."], undefined, client);
   }
   const call = calls[0]!;
   if (typeof call.arguments !== "string") {
-    return blocked("invalid_tool_arguments", ["The model tool arguments were not a JSON string."]);
+    return blocked("invalid_tool_arguments", ["The model tool arguments were not a JSON string."], undefined, client);
   }
 
   let modelArguments: unknown;
   try {
     modelArguments = JSON.parse(call.arguments);
   } catch {
-    return blocked("invalid_tool_arguments", ["The model tool arguments were not valid JSON."]);
+    return blocked("invalid_tool_arguments", ["The model tool arguments were not valid JSON."], undefined, client);
   }
   const validation = validateExposureGraphToolRequest(modelArguments);
   if (!validation.ok) {
-    return blocked("invalid_tool_arguments", validation.error.details);
+    return blocked("invalid_tool_arguments", validation.error.details, undefined, client);
   }
 
   let toolExecution: { statusCode: number; payload: unknown };
   try {
     toolExecution = await toolRunner(validation.request);
   } catch {
-    return blocked("tool_execution_failed", ["The restricted exposure tool could not complete."]);
+    return blocked("tool_execution_failed", ["The restricted exposure tool could not complete."], undefined, client);
   }
   const toolResult = sanitizeToolResult(validation.request, toolExecution.statusCode, toolExecution.payload);
   const callId = typeof call.call_id === "string" ? call.call_id : null;
   if (!callId || !Array.isArray(first.response.output)) {
-    return blocked("model_response_failed", ["The model tool call did not include a usable call id."]);
+    return blocked("model_response_failed", ["The model tool call did not include a usable call id."], undefined, client);
   }
 
   const second = await callResponsesApi({
@@ -406,7 +408,9 @@ export async function runOpenAIExposureClient(
   }, apiKey, endpoint, client, fetchImpl);
   if (!second.ok) return second.result;
   const modelResponse = responseText(second.response);
-  if (!modelResponse) return blocked("model_response_failed", ["The model returned no bounded explanation."]);
+  if (!modelResponse) {
+    return blocked("model_response_failed", ["The model returned no bounded explanation."], undefined, client);
+  }
 
   return {
     status: "ok",

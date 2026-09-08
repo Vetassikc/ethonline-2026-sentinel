@@ -81,10 +81,10 @@ to use a stale or synthetic live result.
 
 The first bounded external attempt used the configured `gpt-5` model setting
 and returned sanitized HTTP `429` before a model-selected tool call. The local
-OpenRouter path is now prepared for `google/gemini-3.8-flash`, but it has not
-made a live request. The OpenAI result is recorded as a provider-side attempt,
-not as natural-language/tool acceptance evidence; no automatic retry is
-permitted.
+OpenRouter path was then exercised once with `google/gemini-3.8-flash`, but the
+model returned no tool call. Both results are recorded as provider-side
+attempts, not as natural-language/tool acceptance evidence; no automatic retry
+is permitted.
 
 ## 6. Freeze and founder review
 

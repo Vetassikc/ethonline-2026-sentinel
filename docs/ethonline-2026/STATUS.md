@@ -42,11 +42,11 @@
   paper executor and labeled replay. A synthetic browser rehearsal completed
   the full flow at narrow width; it is explicitly `FIXTURE`/`REPLAY`, not live
   portfolio evidence.
-- `npm test` passes `172` tests with zero failures, skips or todos. The UI
+- `npm test` passes `173` tests with zero failures, skips or todos. The UI
   contract test passes `3/3`; JavaScript syntax and `git diff --check` pass.
 - The smallest external-client path is implemented locally as a native-fetch
   provider-selectable Responses wrapper around `sentinel_exposure_graph`; the
-  focused provider tests pass `5/5`. It is bounded to two AI requests, one
+  focused provider tests pass `6/6`. It is bounded to two AI requests, one
   read-only local tool call and no signing or execution route.
 
 ## FACT — bounded diagnosis and live paper gate
@@ -157,9 +157,14 @@ external AI acceptance evidence; the sanitized result does not establish
 whether the `429` was caused by rate limit, quota or another provider policy.
 
 After that bounded diagnosis, the client gained an explicit OpenRouter mode
-with the fixed endpoint and model default `google/gemini-3.8-flash`. The local
-provider path is covered by focused tests, but `OPENROUTER_API_KEY` is not
-configured in the local environment and no OpenRouter request has been run.
+with the fixed endpoint and model default `google/gemini-3.8-flash`. After
+explicit approval, one bounded OpenRouter request reached the model, but the
+first response contained no `sentinel_exposure_graph` function call. The
+sanitized code was `model_did_not_call_tool`; therefore no local tool
+execution, source-backed result or second explanation request occurred. The
+initial blocked envelope carried an incorrect OpenAI client label, which was
+corrected locally and covered by a regression test. This remains unverified
+external acceptance evidence, and no retry was made.
 
 ## UNKNOWN or explicitly not delivered
 
@@ -170,7 +175,8 @@ configured in the local environment and no OpenRouter request has been run.
 - No genuine external natural-language AI/MCP integration has been
   demonstrated. The one bounded OpenAI attempt returned HTTP `429` before a
   model-selected tool call, so it provides no source-backed external response.
-  The OpenRouter/Gemini path is implemented and unverified live.
+  The bounded OpenRouter/Gemini attempt also returned before a tool call, so it
+  provides no source-backed external response.
   The in-session model-to-local-contract trace above is not evidence of model
   selection through an external client or MCP connectivity.
 - Provider-stable repeatability of the live paper-executor success is not

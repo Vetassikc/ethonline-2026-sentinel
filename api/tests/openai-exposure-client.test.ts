@@ -163,6 +163,21 @@ test("OpenRouter mode uses the fixed Responses endpoint and Gemini 3.8 Flash", a
   assert.equal(JSON.stringify(requests[0]!.body).includes("test-openrouter-key"), false);
 });
 
+test("OpenRouter blocked model results retain the provider label", async () => {
+  const result = await runOpenAIExposureClient({
+    provider: "openrouter",
+    naturalLanguageRequest: "Check a purchase.",
+    apiKey: "test-openrouter-key",
+    model: "google/gemini-3.8-flash",
+    fetchImpl: async () => response({ output: [] }),
+  });
+
+  assert.equal(result.status, "blocked");
+  if (result.status !== "blocked") return;
+  assert.equal(result.code, "model_did_not_call_tool");
+  assert.equal(result.client, "openrouter_responses_api");
+});
+
 test("OpenAI Responses client fails closed on model arguments outside the local contract", async () => {
   let calls = 0;
   let toolRan = false;
