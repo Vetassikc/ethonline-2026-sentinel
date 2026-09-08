@@ -57,9 +57,10 @@ claim. The live source manifest and CLI acceptance must be reported separately.
   `409`. This is paper-only evidence, not a wallet transaction or a claim of
   provider-stable repeatability.
 - [ ] A genuine external natural-language AI/tool invocation is not yet
-  recorded. The bounded OpenAI Responses client is implemented and tested, but
-  its live call still requires local configuration and explicit approval for
-  possible API usage charges.
+  recorded. One bounded OpenAI Responses attempt on September 8 used the local
+  `gpt-5` setting but returned sanitized HTTP `429` before a model function
+  call; no source-backed external response was observed and no retry was made.
+  The client remains implemented and locally tested.
 - [ ] Founder review, dependency review, clean-install reproduction, media,
   deployment and submission remain separate gates.
 

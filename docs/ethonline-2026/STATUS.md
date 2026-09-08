@@ -1,4 +1,4 @@
-# Status — September 7, 2026
+# Status — September 8, 2026
 
 ## FACT — verified now
 
@@ -146,10 +146,15 @@ fail-closed `DENY` with `rpc_aave_balance_mismatch`; it demonstrates the
 authority boundary and sanitized failure path, not a successful external
 AI/MCP integration.
 
-The external-client implementation is a prepared integration boundary, not
-live acceptance evidence. No external API request was run in this step because
-the local environment has no AI-client credential configured and API usage may
-incur charges requiring explicit approval.
+The bounded external client was exercised once on September 8 with the local
+`OPENAI_MODEL=gpt-5` setting and the natural-language request to check a bounded
+`0.5 wstETH` exposure purchase. The fixed Responses endpoint returned the
+sanitized result `status: "blocked"`, `code: "external_request_failed"` and
+HTTP `429` before returning a model message or `sentinel_exposure_graph`
+function call. No source-backed response, second explanation request, retry,
+signing or execution was observed. This is a bounded integration attempt, not
+external AI acceptance evidence; the sanitized result does not establish
+whether the `429` was caused by rate limit, quota or another provider policy.
 
 ## UNKNOWN or explicitly not delivered
 
@@ -157,7 +162,9 @@ incur charges requiring explicit approval.
   and the sampled stale oracle timestamp do not justify a USD risk model.
 - No public demo account is frozen in the repository. The configured account
   remains operator-owned local configuration.
-- No genuine external natural-language AI/MCP integration has been exercised.
+- No genuine external natural-language AI/MCP integration has been
+  demonstrated. The one bounded OpenAI attempt returned HTTP `429` before a
+  model-selected tool call, so it provides no source-backed external response.
   The in-session model-to-local-contract trace above is not evidence of model
   selection through an external client or MCP connectivity.
 - Provider-stable repeatability of the live paper-executor success is not
@@ -188,8 +195,10 @@ dependency mutation was performed.
 1. If stronger repeatability is still worth the event scope, investigate the
    one-unit historical-read mismatch with a bounded source trace; do not
    weaken the fresh-condition gate, exact arithmetic or fall back to a fixture.
-2. If desired, configure and record a genuine external AI/tool trace without
-   granting the model control of account, policy, URLs, signing or execution.
+2. If external AI evidence remains required, inspect the provider's usage/limit
+   status or an allowed tool-calling model, then obtain approval for one new
+   bounded attempt. Do not retry the recorded `429` automatically and do not
+   grant the model control of account, policy, URLs, signing or execution.
 3. Founder reviews this narrow action policy and decides whether further
    reproduction/media work is worth the remaining event scope.
 

@@ -57,8 +57,10 @@ source fields for a short explanation. The client makes at most two external
 AI requests, one local tool call and no retries. It never imports signing or
 paper-execution routes.
 
-The external call is not acceptance evidence until it is run with founder
-approval for possible API usage charges. Setup is local only:
+A live external call is acceptance evidence only if it returns the actual model
+tool call, the validated source-backed result and the bounded explanation.
+Each attempt requires founder approval because API usage may incur charges.
+Setup is local only:
 
 1. In the OpenAI Platform API keys page, create or select a key. Do not paste
    it into chat or commit it.
@@ -78,6 +80,13 @@ Expected successful output contains `status: "ok"`,
 with source/policy fields, and `model_response`. A missing key returns a
 sanitized `missing_configuration` result; a live Graph/RPC failure remains a
 non-authorizing tool result and must not be rewritten as success.
+
+On September 8, 2026, one bounded attempt with the local `gpt-5` setting
+returned sanitized `status: "blocked"`,
+`code: "external_request_failed"` and HTTP `429` before the external model
+returned a function call. It therefore did not demonstrate the required
+natural-language → actual tool call → source-backed response chain. No retry
+was made, and the `429` is not treated as a policy or source result.
 
 ## Compatibility position-evidence tool
 

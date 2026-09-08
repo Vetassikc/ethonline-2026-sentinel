@@ -78,6 +78,11 @@ to use a stale or synthetic live result.
 - [ ] Keep the local CLI and schema description clearly separate from this
   external integration claim.
 
+The first bounded external attempt used the configured `gpt-5` model setting
+and returned sanitized HTTP `429` before a model-selected tool call. It is
+recorded as a provider-side attempt, not as natural-language/tool acceptance
+evidence; no automatic retry is permitted.
+
 ## 6. Freeze and founder review
 
 - [x] Reconcile public docs, continuity and AI attribution with actual files,
