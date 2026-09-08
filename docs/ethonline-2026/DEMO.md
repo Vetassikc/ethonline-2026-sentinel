@@ -56,13 +56,13 @@ claim. The live source manifest and CLI acceptance must be reported separately.
   second execution of the same permit returned `NONCE_ALREADY_USED` with
   `409`. This is paper-only evidence, not a wallet transaction or a claim of
   provider-stable repeatability.
-- [ ] A genuine external natural-language AI/tool invocation is not yet
-  recorded. One bounded OpenAI Responses attempt on September 8 used the local
-  `gpt-5` setting but returned sanitized HTTP `429` before a model function
-  call; no source-backed external response was observed and no retry was made.
-  One subsequent OpenRouter attempt with `google/gemini-3.8-flash` returned
-  `model_did_not_call_tool` before the restricted tool ran. The provider-
-  selectable client remains locally tested but not acceptance-verified live.
+- [x] One bounded external natural-language AI/tool invocation completed
+  through OpenRouter `openai/gpt-5`: the model called
+  `sentinel_exposure_graph`, the local validator/tool ran, and the live result
+  returned `ALLOW` for `0.500000000000000000 wstETH` with source status `ok`.
+  No signing or execution occurred. The earlier direct OpenAI `429` and
+  OpenRouter Gemini `model_did_not_call_tool` results remain separate failed
+  variants; the final model prose ended at the bounded output limit.
 - [ ] Founder review, dependency review, clean-install reproduction, media,
   deployment and submission remain separate gates.
 

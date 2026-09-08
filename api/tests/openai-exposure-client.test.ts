@@ -159,6 +159,8 @@ test("OpenRouter mode uses the fixed Responses endpoint and Gemini 3.8 Flash", a
     OPENROUTER_RESPONSES_ENDPOINT,
   ]);
   assert.equal(requests[0]!.body.model, "google/gemini-3.8-flash");
+  assert.equal(requests[0]!.body.max_output_tokens, 2_000);
+  assert.equal(requests[1]!.body.max_output_tokens, 1_000);
   assert.equal(requests[0]!.body.tool_choice instanceof Object, true);
   assert.equal(JSON.stringify(requests[0]!.body).includes("test-openrouter-key"), false);
 });

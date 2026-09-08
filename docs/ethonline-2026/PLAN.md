@@ -67,24 +67,25 @@ to use a stale or synthetic live result.
   arbitrary provider URLs in browser code.
 - [x] Run a narrow synthetic browser rehearsal through the complete flow.
 
-## 5. Genuine AI boundary — not yet evidenced
+## 5. Genuine AI boundary — demonstrated with bounded evidence
 
 - [x] Add a bounded optional provider-selectable Responses client around the
   existing `sentinel_exposure_graph` contract without adding an SDK or
   execution path.
-- [ ] Configure an existing external AI client or MCP integration, if useful,
-  without installing a broad platform or exposing credentials.
-- [ ] Capture the actual natural-language request, model-selected tool call,
-  validated arguments, source-derived result and explanation.
-- [ ] Keep the local CLI and schema description clearly separate from this
+- [x] Configure an existing external AI client without installing a broad
+  platform or exposing credentials.
+- [x] Capture the actual natural-language request, model-selected tool call,
+  validated arguments, source-derived result and bounded explanation.
+- [x] Keep the local CLI and schema description clearly separate from this
   external integration claim.
 
 The first bounded external attempt used the configured `gpt-5` model setting
 and returned sanitized HTTP `429` before a model-selected tool call. The local
 OpenRouter path was then exercised once with `google/gemini-3.8-flash`, but the
 model returned no tool call. Both results are recorded as provider-side
-attempts, not as natural-language/tool acceptance evidence; no automatic retry
-is permitted.
+attempts, not as acceptance evidence. A final bounded OpenRouter
+`openai/gpt-5` variant completed the tool/source chain; its prose explanation
+ended at the bounded output limit. No automatic retry is permitted.
 
 ## 6. Freeze and founder review
 

@@ -13,6 +13,8 @@ export const DEFAULT_OPENAI_MODEL = "gpt-5";
 export const DEFAULT_OPENROUTER_MODEL = "google/gemini-3.8-flash";
 export const MAX_NATURAL_LANGUAGE_REQUEST_CHARS = 2_000;
 export const MAX_MODEL_RESPONSE_CHARS = 4_000;
+export const ROUTER_MAX_OUTPUT_TOKENS = 2_000;
+export const EXPLANATION_MAX_OUTPUT_TOKENS = 1_000;
 
 export type ExternalAIProvider = "openai" | "openrouter";
 type ExternalAIClientName = "openai_responses_api" | "openrouter_responses_api";
@@ -350,7 +352,7 @@ export async function runOpenAIExposureClient(
     tools,
     tool_choice: { type: "function", name: EXPOSURE_GRAPH_TOOL_NAME },
     parallel_tool_calls: false,
-    max_output_tokens: 300,
+    max_output_tokens: ROUTER_MAX_OUTPUT_TOKENS,
   }, apiKey, endpoint, client, fetchImpl);
   if (!first.ok) return first.result;
 
@@ -404,7 +406,7 @@ export async function runOpenAIExposureClient(
     tools,
     tool_choice: "none",
     parallel_tool_calls: false,
-    max_output_tokens: 300,
+    max_output_tokens: EXPLANATION_MAX_OUTPUT_TOKENS,
   }, apiKey, endpoint, client, fetchImpl);
   if (!second.ok) return second.result;
   const modelResponse = responseText(second.response);

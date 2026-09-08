@@ -48,6 +48,10 @@
   provider-selectable Responses wrapper around `sentinel_exposure_graph`; the
   focused provider tests pass `6/6`. It is bounded to two AI requests, one
   read-only local tool call and no signing or execution route.
+- One bounded external OpenRouter run using `openai/gpt-5` completed the
+  natural-language → model tool call → live source-backed policy chain for a
+  read-only `0.5 wstETH` check. The result was `ALLOW` with source status `ok`
+  at block `51033233`; no signing or execution authority was exposed.
 
 ## FACT — bounded diagnosis and live paper gate
 
@@ -166,17 +170,29 @@ initial blocked envelope carried an incorrect OpenAI client label, which was
 corrected locally and covered by a regression test. This remains unverified
 external acceptance evidence, and no retry was made.
 
+The final bounded variant used the OpenRouter model `openai/gpt-5` with the
+router budget raised to `2000` tokens and the explanation budget bounded at
+`1000`. It returned `status: "ok"`, an actual
+`sentinel_exposure_graph` call with validated `requested_units: "0.5"`, and a
+live tool result: `ALLOW`, requested and allowed
+`0.500000000000000000 wstETH`, gross exposure
+`0.000012505725903091`, headroom `0.999987494274096909`, paths
+`direct_holding` and `aave_supply`, and gaps
+`usd_valuation_unavailable` and `stale_oracle_price`. The model explanation
+contained those source/policy fields but ended mid-sentence at the bounded
+output limit; completeness of the prose explanation remains a limitation even
+though the tool/source chain was demonstrated. No retry followed.
+
 ## UNKNOWN or explicitly not delivered
 
 - The Graph deployment is not qualified for USD valuation. Its `priceInEth`
   and the sampled stale oracle timestamp do not justify a USD risk model.
 - No public demo account is frozen in the repository. The configured account
   remains operator-owned local configuration.
-- No genuine external natural-language AI/MCP integration has been
-  demonstrated. The one bounded OpenAI attempt returned HTTP `429` before a
-  model-selected tool call, so it provides no source-backed external response.
-  The bounded OpenRouter/Gemini attempt also returned before a tool call, so it
-  provides no source-backed external response.
+- The bounded external natural-language AI/tool chain is demonstrated for one
+  OpenRouter `openai/gpt-5` route as described above. The earlier direct OpenAI
+  `gpt-5` attempt returned HTTP `429`, and the OpenRouter Gemini 3.8 Flash
+  attempts remain separate failed variants, not interchangeable evidence.
   The in-session model-to-local-contract trace above is not evidence of model
   selection through an external client or MCP connectivity.
 - Provider-stable repeatability of the live paper-executor success is not
@@ -191,8 +207,9 @@ external acceptance evidence, and no retry was made.
 - No production deployment, wallet transaction, live trade, portal
   submission, outbound message, adoption, partnership, revenue, audit,
   security assurance or prize outcome is claimed.
-- Founder review of policy choices, live output, demo narration and media is
-  still required.
+- The completeness of the final model's prose explanation remains unverified
+  because its captured text ended at the bounded output limit. Founder review
+  of policy choices, live output, demo narration and media is still required.
 
 ## Current dependency audit
 
@@ -207,11 +224,11 @@ dependency mutation was performed.
 1. If stronger repeatability is still worth the event scope, investigate the
    one-unit historical-read mismatch with a bounded source trace; do not
    weaken the fresh-condition gate, exact arithmetic or fall back to a fixture.
-2. If external AI evidence remains required, configure OpenRouter with the
-   exact local variables documented in `AI_TOOL.md`, then obtain approval for
-   one new bounded attempt. Do not retry the recorded OpenAI `429`
-   automatically and do not grant the model control of account, policy, URLs,
-   signing or execution.
+2. No further external provider/model attempts are planned for this bounded
+   slice. If complete prose output is required, inspect the response-completion
+   state and obtain separate approval before any new paid request; do not
+   weaken the tool validator or grant the model control of account, policy,
+   URLs, signing or execution.
 3. Founder reviews this narrow action policy and decides whether further
    reproduction/media work is worth the remaining event scope.
 

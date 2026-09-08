@@ -115,6 +115,15 @@ reported the wrong provider label; that local diagnostic bug was corrected and
 covered by a regression test. This attempt is not external acceptance
 evidence, and no retry was made.
 
+A final bounded variant used the OpenRouter model `openai/gpt-5` with a
+process-local `OPENROUTER_MODEL` override. It returned `status: "ok"`, the
+actual `sentinel_exposure_graph` tool call, validated arguments, a live
+source-backed `ALLOW` result for `0.500000000000000000 wstETH`, and a bounded
+model explanation containing the source/policy fields. The captured prose
+ended mid-sentence at the output limit, so explanation completeness is a
+separate limitation; the tool/source chain itself is recorded as demonstrated.
+No signing or execution occurred.
+
 Google AI Studio creates a separate Gemini API key, not a ChatGPT/OpenAI key.
 The direct Google AI Studio OpenAI-compatibility endpoint is intentionally not
 another provider in this acceptance slice; adding it would require a separate
