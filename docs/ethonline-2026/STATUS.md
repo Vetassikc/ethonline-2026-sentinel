@@ -42,12 +42,12 @@
   paper executor and labeled replay. A synthetic browser rehearsal completed
   the full flow at narrow width; it is explicitly `FIXTURE`/`REPLAY`, not live
   portfolio evidence.
-- `npm test` passes `171` tests with zero failures, skips or todos. The UI
+- `npm test` passes `172` tests with zero failures, skips or todos. The UI
   contract test passes `3/3`; JavaScript syntax and `git diff --check` pass.
 - The smallest external-client path is implemented locally as a native-fetch
-  OpenAI Responses wrapper around `sentinel_exposure_graph`; focused tests pass
-  `4/4`. It is bounded to two AI requests, one read-only local tool call and
-  no signing or execution route.
+  provider-selectable Responses wrapper around `sentinel_exposure_graph`; the
+  focused provider tests pass `5/5`. It is bounded to two AI requests, one
+  read-only local tool call and no signing or execution route.
 
 ## FACT — bounded diagnosis and live paper gate
 
@@ -156,6 +156,11 @@ signing or execution was observed. This is a bounded integration attempt, not
 external AI acceptance evidence; the sanitized result does not establish
 whether the `429` was caused by rate limit, quota or another provider policy.
 
+After that bounded diagnosis, the client gained an explicit OpenRouter mode
+with the fixed endpoint and model default `google/gemini-3.8-flash`. The local
+provider path is covered by focused tests, but `OPENROUTER_API_KEY` is not
+configured in the local environment and no OpenRouter request has been run.
+
 ## UNKNOWN or explicitly not delivered
 
 - The Graph deployment is not qualified for USD valuation. Its `priceInEth`
@@ -165,6 +170,7 @@ whether the `429` was caused by rate limit, quota or another provider policy.
 - No genuine external natural-language AI/MCP integration has been
   demonstrated. The one bounded OpenAI attempt returned HTTP `429` before a
   model-selected tool call, so it provides no source-backed external response.
+  The OpenRouter/Gemini path is implemented and unverified live.
   The in-session model-to-local-contract trace above is not evidence of model
   selection through an external client or MCP connectivity.
 - Provider-stable repeatability of the live paper-executor success is not
@@ -195,10 +201,11 @@ dependency mutation was performed.
 1. If stronger repeatability is still worth the event scope, investigate the
    one-unit historical-read mismatch with a bounded source trace; do not
    weaken the fresh-condition gate, exact arithmetic or fall back to a fixture.
-2. If external AI evidence remains required, inspect the provider's usage/limit
-   status or an allowed tool-calling model, then obtain approval for one new
-   bounded attempt. Do not retry the recorded `429` automatically and do not
-   grant the model control of account, policy, URLs, signing or execution.
+2. If external AI evidence remains required, configure OpenRouter with the
+   exact local variables documented in `AI_TOOL.md`, then obtain approval for
+   one new bounded attempt. Do not retry the recorded OpenAI `429`
+   automatically and do not grant the model control of account, policy, URLs,
+   signing or execution.
 3. Founder reviews this narrow action policy and decides whether further
    reproduction/media work is worth the remaining event scope.
 

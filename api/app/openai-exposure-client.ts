@@ -8,9 +8,14 @@ import {
 import type { ExposureRequest } from "../../shared/schemas/exposure-graph.ts";
 
 export const OPENAI_RESPONSES_ENDPOINT = "https://api.openai.com/v1/responses";
+export const OPENROUTER_RESPONSES_ENDPOINT = "https://openrouter.ai/api/v1/responses";
 export const DEFAULT_OPENAI_MODEL = "gpt-5";
+export const DEFAULT_OPENROUTER_MODEL = "google/gemini-3.8-flash";
 export const MAX_NATURAL_LANGUAGE_REQUEST_CHARS = 2_000;
 export const MAX_MODEL_RESPONSE_CHARS = 4_000;
+
+export type ExternalAIProvider = "openai" | "openrouter";
+type ExternalAIClientName = "openai_responses_api" | "openrouter_responses_api";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -72,7 +77,7 @@ export type SanitizedExposureToolResult = {
 export type OpenAIExposureClientResult =
   | {
     status: "ok";
-    client: "openai_responses_api";
+    client: ExternalAIClientName;
     model: string;
     natural_language_request: string;
     model_tool_call: {
@@ -87,6 +92,7 @@ export type OpenAIExposureClientResult =
     client: "openai_responses_api";
     code:
       | "missing_configuration"
+      | "invalid_configuration"
       | "invalid_natural_language_request"
       | "external_request_failed"
       | "model_did_not_call_tool"
@@ -100,6 +106,7 @@ export type OpenAIExposureClientResult =
 
 type OpenAIExposureClientOptions = {
   naturalLanguageRequest: string;
+  provider?: ExternalAIProvider;
   apiKey?: string;
   model?: string;
   fetchImpl?: OpenAIExposureFetch;
@@ -135,10 +142,11 @@ function blocked(
   code: Extract<OpenAIExposureClientResult, { status: "blocked" }>["code"],
   details: string[],
   httpStatus?: number,
+  client: ExternalAIClientName = "openai_responses_api",
 ): OpenAIExposureClientResult {
   return {
     status: "blocked",
-    client: "openai_responses_api",
+    client,
     code,
     details,
     ...(httpStatus === undefined ? {} : { http_status: httpStatus }),
@@ -245,12 +253,14 @@ function sanitizeToolResult(
 async function callResponsesApi(
   body: JsonRecord,
   apiKey: string,
+  endpoint: string,
+  client: ExternalAIClientName,
   fetchImpl: OpenAIExposureFetch,
 ): Promise<{ ok: true; response: OpenAIResponse } | { ok: false; result: OpenAIExposureClientResult }> {
   let response: FetchResponse;
   let payload: unknown;
   try {
-    response = await fetchImpl(OPENAI_RESPONSES_ENDPOINT, {
+    response = await fetchImpl(endpoint, {
       method: "POST",
       headers: {
         accept: "application/json",
@@ -261,12 +271,25 @@ async function callResponsesApi(
     });
     payload = await response.json();
   } catch {
-    return { ok: false, result: blocked("external_request_failed", ["The external AI request did not complete."]) };
+    return {
+      ok: false,
+      result: blocked(
+        "external_request_failed",
+        ["The external AI request did not complete."],
+        undefined,
+        client,
+      ),
+    };
   }
   if (!response.ok || !isRecord(payload)) {
     return {
       ok: false,
-      result: blocked("external_request_failed", ["The external AI request returned a non-success response."], response.status),
+      result: blocked(
+        "external_request_failed",
+        ["The external AI request returned a non-success response."],
+        response.status,
+        client,
+      ),
     };
   }
   return { ok: true, response: payload as OpenAIResponse };
@@ -285,13 +308,36 @@ export async function runOpenAIExposureClient(
     ]);
   }
 
-  const apiKey = options.apiKey ?? process.env.OPENAI_API_KEY?.trim();
-  const model = options.model ?? process.env.OPENAI_MODEL?.trim() ?? DEFAULT_OPENAI_MODEL;
+  const configuredProvider = options.provider ?? process.env.EXTERNAL_AI_PROVIDER?.trim() ?? "openai";
+  if (configuredProvider !== "openai" && configuredProvider !== "openrouter") {
+    return blocked("invalid_configuration", [
+      "EXTERNAL_AI_PROVIDER must be either openai or openrouter.",
+    ]);
+  }
+  const provider = configuredProvider as ExternalAIProvider;
+  const client: ExternalAIClientName = provider === "openrouter"
+    ? "openrouter_responses_api"
+    : "openai_responses_api";
+  const endpoint = provider === "openrouter"
+    ? OPENROUTER_RESPONSES_ENDPOINT
+    : OPENAI_RESPONSES_ENDPOINT;
+  const apiKeyName = provider === "openrouter" ? "OPENROUTER_API_KEY" : "OPENAI_API_KEY";
+  const modelName = provider === "openrouter" ? "OPENROUTER_MODEL" : "OPENAI_MODEL";
+  const apiKey = options.apiKey ?? (
+    provider === "openrouter"
+      ? process.env.OPENROUTER_API_KEY?.trim()
+      : process.env.OPENAI_API_KEY?.trim()
+  );
+  const model = options.model ?? (
+    provider === "openrouter"
+      ? process.env.OPENROUTER_MODEL?.trim() ?? DEFAULT_OPENROUTER_MODEL
+      : process.env.OPENAI_MODEL?.trim() ?? DEFAULT_OPENAI_MODEL
+  );
   if (!apiKey || !model) {
     return blocked("missing_configuration", [
-      ...(apiKey ? [] : ["OPENAI_API_KEY is not configured."]),
-      ...(model ? [] : ["OPENAI_MODEL is not configured."]),
-    ]);
+      ...(apiKey ? [] : [`${apiKeyName} is not configured.`]),
+      ...(model ? [] : [`${modelName} is not configured.`]),
+    ], undefined, client);
   }
 
   const fetchImpl = options.fetchImpl ?? (fetch as unknown as OpenAIExposureFetch);
@@ -305,7 +351,7 @@ export async function runOpenAIExposureClient(
     tool_choice: { type: "function", name: EXPOSURE_GRAPH_TOOL_NAME },
     parallel_tool_calls: false,
     max_output_tokens: 300,
-  }, apiKey, fetchImpl);
+  }, apiKey, endpoint, client, fetchImpl);
   if (!first.ok) return first.result;
 
   const calls = functionCalls(first.response);
@@ -357,14 +403,14 @@ export async function runOpenAIExposureClient(
     tool_choice: "none",
     parallel_tool_calls: false,
     max_output_tokens: 300,
-  }, apiKey, fetchImpl);
+  }, apiKey, endpoint, client, fetchImpl);
   if (!second.ok) return second.result;
   const modelResponse = responseText(second.response);
   if (!modelResponse) return blocked("model_response_failed", ["The model returned no bounded explanation."]);
 
   return {
     status: "ok",
-    client: "openai_responses_api",
+    client,
     model,
     natural_language_request: naturalLanguageRequest,
     model_tool_call: {

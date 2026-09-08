@@ -45,29 +45,47 @@ The local CLI invocation is not evidence of a genuine external model/MCP
 trace. This repository must not claim a natural-language AI interaction until
 a configured client performs that request and the founder records the trace.
 
-## Minimal external client — OpenAI Responses API
+## Minimal external client — provider-selectable Responses API
 
 The repository now includes a bounded optional client at
-`scripts/openai-exposure-client.ts`. It uses the OpenAI Responses API with one
-function definition copied from the existing `sentinel_exposure_graph`
-contract. The first request lets the model translate natural language into
-the exact request shape; the local process validates and runs the existing
-read-only tool; the second request gives the model only sanitized policy and
-source fields for a short explanation. The client makes at most two external
-AI requests, one local tool call and no retries. It never imports signing or
-paper-execution routes.
+`scripts/openai-exposure-client.ts`. It uses a fixed Responses-compatible
+endpoint with one function definition copied from the existing
+`sentinel_exposure_graph` contract. The first request lets the model translate
+natural language into the exact request shape; the local process validates and
+runs the existing read-only tool; the second request gives the model only
+sanitized policy and source fields for a short explanation. The client makes
+at most two external AI requests, one local tool call and no retries. It never
+imports signing or paper-execution routes.
 
 A live external call is acceptance evidence only if it returns the actual model
 tool call, the validated source-backed result and the bounded explanation.
 Each attempt requires founder approval because API usage may incur charges.
 Setup is local only:
 
-1. In the OpenAI Platform API keys page, create or select a key. Do not paste
-   it into chat or commit it.
-2. Add the key to the ignored local `.env.local` as `OPENAI_API_KEY=...` and,
-   if needed, set `OPENAI_MODEL=...` to a tool-calling model enabled for the
-   account. The client uses the fixed official Responses endpoint and does not
-   accept a model-supplied URL.
+1. Create or select the key for the provider you will use: [OpenAI API
+   keys](https://platform.openai.com/api-keys) for `openai`, or [OpenRouter
+   keys](https://openrouter.ai/settings/keys) for `openrouter`. Do not paste a
+   key into chat or commit it.
+2. Choose exactly one provider in the ignored local `.env.local`. The default
+   is the existing OpenAI path:
+
+```dotenv
+EXTERNAL_AI_PROVIDER=openai
+OPENAI_API_KEY=...
+OPENAI_MODEL=gpt-5
+```
+
+   The bounded OpenRouter path uses the existing OpenRouter balance:
+
+```dotenv
+EXTERNAL_AI_PROVIDER=openrouter
+OPENROUTER_API_KEY=...
+OPENROUTER_MODEL=google/gemini-3.8-flash
+```
+
+   The client maps only these provider values to fixed endpoints and never
+   accepts a model-supplied URL. `google/gemini-3.8-flash` is an OpenRouter
+   model slug; it is not a ChatGPT key or a local authority setting.
 3. Run one bounded request:
 
 ```sh
@@ -75,11 +93,11 @@ node --env-file=.env.local scripts/openai-exposure-client.ts \
   "Check whether a bounded 0.5 wstETH exposure purchase is allowed."
 ```
 
-Expected successful output contains `status: "ok"`,
-`model_tool_call.name: "sentinel_exposure_graph"`, a sanitized `tool_result`
-with source/policy fields, and `model_response`. A missing key returns a
-sanitized `missing_configuration` result; a live Graph/RPC failure remains a
-non-authorizing tool result and must not be rewritten as success.
+Expected successful output contains `status: "ok"`, a provider-specific client
+name, `model_tool_call.name: "sentinel_exposure_graph"`, a sanitized
+`tool_result` with source/policy fields, and `model_response`. A missing key
+returns a sanitized `missing_configuration` result; a live Graph/RPC failure
+remains a non-authorizing tool result and must not be rewritten as success.
 
 On September 8, 2026, one bounded attempt with the local `gpt-5` setting
 returned sanitized `status: "blocked"`,
@@ -87,6 +105,14 @@ returned sanitized `status: "blocked"`,
 returned a function call. It therefore did not demonstrate the required
 natural-language → actual tool call → source-backed response chain. No retry
 was made, and the `429` is not treated as a policy or source result.
+
+Google AI Studio creates a separate Gemini API key, not a ChatGPT/OpenAI key.
+The direct Google AI Studio OpenAI-compatibility endpoint is intentionally not
+another provider in this acceptance slice; adding it would require a separate
+provider adapter and gate. See the [Gemini OpenAI compatibility
+guide](https://ai.google.dev/gemini-api/docs/openai) and the [OpenRouter
+Responses API](https://openrouter.ai/docs/api/api-reference/responses/create-responses)
+for the provider contracts used to choose this narrow path.
 
 ## Compatibility position-evidence tool
 

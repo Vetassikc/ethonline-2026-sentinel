@@ -60,7 +60,8 @@ claim. The live source manifest and CLI acceptance must be reported separately.
   recorded. One bounded OpenAI Responses attempt on September 8 used the local
   `gpt-5` setting but returned sanitized HTTP `429` before a model function
   call; no source-backed external response was observed and no retry was made.
-  The client remains implemented and locally tested.
+  The provider-selectable client, including the OpenRouter
+  `google/gemini-3.8-flash` path, remains locally tested but not live-verified.
 - [ ] Founder review, dependency review, clean-install reproduction, media,
   deployment and submission remain separate gates.
 

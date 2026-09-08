@@ -7,6 +7,7 @@ import {
 } from "../app/exposure-tool.ts";
 import {
   OPENAI_RESPONSES_ENDPOINT,
+  OPENROUTER_RESPONSES_ENDPOINT,
   runOpenAIExposureClient,
 } from "../app/openai-exposure-client.ts";
 import type { ExposureRequest } from "../../shared/schemas/exposure-graph.ts";
@@ -117,6 +118,49 @@ test("OpenAI Responses client performs a model-selected restricted tool round tr
   assert.equal(secondBody.includes("function_call_output"), true);
   assert.equal(requests[1]!.body.tool_choice, "none");
   assert.equal(OPENAI_RESPONSES_ENDPOINT, "https://api.openai.com/v1/responses");
+});
+
+test("OpenRouter mode uses the fixed Responses endpoint and Gemini 3.8 Flash", async () => {
+  const requests: Array<{ input: string; body: Record<string, unknown> }> = [];
+  const fetchImpl = async (input: string, init?: RequestInit) => {
+    requests.push({
+      input,
+      body: JSON.parse(String(init?.body)) as Record<string, unknown>,
+    });
+    if (requests.length === 1) {
+      return response({
+        output: [{
+          type: "function_call",
+          name: "sentinel_exposure_graph",
+          call_id: "openrouter_call_1",
+          arguments: JSON.stringify(REQUEST),
+        }],
+      });
+    }
+    return response({ output_text: "The bounded source-backed policy result is available." });
+  };
+
+  const result = await runOpenAIExposureClient({
+    provider: "openrouter",
+    naturalLanguageRequest: "Check whether a bounded 0.5 wstETH exposure purchase is allowed.",
+    apiKey: "test-openrouter-key",
+    model: "google/gemini-3.8-flash",
+    fetchImpl,
+    toolRunner: async () => ({ statusCode: 200, payload: toolPayload() }),
+  });
+
+  assert.equal(result.status, "ok");
+  if (result.status !== "ok") return;
+  assert.equal(result.client, "openrouter_responses_api");
+  assert.equal(result.model, "google/gemini-3.8-flash");
+  assert.equal(requests.length, 2);
+  assert.deepEqual(requests.map((request) => request.input), [
+    OPENROUTER_RESPONSES_ENDPOINT,
+    OPENROUTER_RESPONSES_ENDPOINT,
+  ]);
+  assert.equal(requests[0]!.body.model, "google/gemini-3.8-flash");
+  assert.equal(requests[0]!.body.tool_choice instanceof Object, true);
+  assert.equal(JSON.stringify(requests[0]!.body).includes("test-openrouter-key"), false);
 });
 
 test("OpenAI Responses client fails closed on model arguments outside the local contract", async () => {

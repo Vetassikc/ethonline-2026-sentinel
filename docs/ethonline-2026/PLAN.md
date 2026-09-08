@@ -69,8 +69,9 @@ to use a stale or synthetic live result.
 
 ## 5. Genuine AI boundary — not yet evidenced
 
-- [x] Add a bounded optional OpenAI Responses client around the existing
-  `sentinel_exposure_graph` contract without adding an SDK or execution path.
+- [x] Add a bounded optional provider-selectable Responses client around the
+  existing `sentinel_exposure_graph` contract without adding an SDK or
+  execution path.
 - [ ] Configure an existing external AI client or MCP integration, if useful,
   without installing a broad platform or exposing credentials.
 - [ ] Capture the actual natural-language request, model-selected tool call,
@@ -79,9 +80,11 @@ to use a stale or synthetic live result.
   external integration claim.
 
 The first bounded external attempt used the configured `gpt-5` model setting
-and returned sanitized HTTP `429` before a model-selected tool call. It is
-recorded as a provider-side attempt, not as natural-language/tool acceptance
-evidence; no automatic retry is permitted.
+and returned sanitized HTTP `429` before a model-selected tool call. The local
+OpenRouter path is now prepared for `google/gemini-3.8-flash`, but it has not
+made a live request. The OpenAI result is recorded as a provider-side attempt,
+not as natural-language/tool acceptance evidence; no automatic retry is
+permitted.
 
 ## 6. Freeze and founder review
 
