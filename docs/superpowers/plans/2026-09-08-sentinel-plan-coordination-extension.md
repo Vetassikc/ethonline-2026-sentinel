@@ -547,7 +547,7 @@ lifecycle uses a server-issued `FIXTURE` source reference; it is not live
 paper execution. No wallet transaction or paid external provider/model
 request occurred.
 
-Proposed commit: feat: add plan-bound authorization and paper execution
+Implemented commit: `22e405f` — `feat: add plan-bound authorization and paper execution`.
 
 ## Task 5: Add dependency-impact propagation and the what-if experience
 

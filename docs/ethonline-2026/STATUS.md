@@ -4,8 +4,8 @@
 
 - The public repository is isolated on `ethonline-2026/position-evidence`; the
   historical upstream tree was not rewritten. The reviewed Task 3/Task 4A
-  baseline is published as commit `aa95f40` on the explicit `ethonline`
-  remote; Task 4B is a separate bounded checkpoint.
+  baseline is published as commit `aa95f40` and the verified Task 4B
+  checkpoint as `22e405f` on the explicit `ethonline` remote.
 - The configured The Graph source passed a read-only `_meta` preflight with
   fresh indexed metadata and no indexing errors during the recorded check.
 - A bounded live account query returned a complete page containing the
@@ -420,7 +420,8 @@ dependency mutation was performed.
 
 ## Authority boundary
 
-Local implementation and verification are complete for the committed slice.
-Public push, paid services, account changes, deployment, portal submission and
-wallet actions remain separate founder decisions. This file reports local
+Local implementation and verification are complete for the committed slice;
+the two reviewed commits were pushed only to the explicit `ethonline` remote
+after approval. Paid services, account changes, deployment, portal submission
+and wallet actions remain separate founder decisions. This file reports local
 facts and bounded unknowns, not release readiness or sponsor qualification.
