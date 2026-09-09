@@ -20,6 +20,8 @@ export type ExposureReservationSource = {
   graph_hash: string;
   provenance: ExposureSourceProvenance;
   qualified: boolean;
+  account?: string;
+  chain_id?: number;
 };
 
 export type ExposureReservationSourceSnapshot = {
@@ -179,6 +181,18 @@ type ExposureReservationRecord = {
   fingerprint: string;
   version: number;
 };
+
+export type ExposureReservationExecutionView = {
+  reservation: ExposureReservationV1;
+  plan: ExposurePlanV1;
+  evaluation: ExposurePlanEvaluation;
+  resources: ExposurePlanResourceRequirements;
+  version: number;
+};
+
+export type ExposureReservationPaperCommitResult =
+  | { status: "paper_executed"; reservation: ExposureReservationV1 }
+  | { status: "rejected"; code: ExposureReservationRejectionCode; details: string[] };
 
 type ExposureIdempotencyRecord = {
   fingerprint: string;
@@ -357,6 +371,68 @@ function reservationDelta(record: ExposureReservationRecord): ExposureReservatio
 
 function activeDeltas(runtime: ExposureReservationRuntime): ExposureReservationDelta[] {
   return activeRecords(runtime).map(reservationDelta);
+}
+
+export function getActiveExposureReservationDeltas(
+  host: ExposureReservationHost,
+  options: { exclude_reservation_id?: string } = {},
+): ExposureReservationDelta[] {
+  const runtime = runtimeOf(host);
+  return activeRecords(runtime)
+    .filter((record) => record.reservation.reservation_id !== options.exclude_reservation_id)
+    .map(reservationDelta)
+    .map((delta) => ({ ...delta }));
+}
+
+export function getExposureReservationExecutionView(
+  host: ExposureReservationHost,
+  reservationId: string,
+): ExposureReservationExecutionView | null {
+  const runtime = runtimeOf(host);
+  const record = runtime.reservations.get(reservationId);
+  if (!record) return null;
+  return {
+    reservation: cloneReservation(record.reservation),
+    plan: clonePlan(record.plan),
+    evaluation: cloneEvaluation(record.evaluation),
+    resources: { ...record.resources },
+    version: record.version,
+  };
+}
+
+export function commitExposureReservationPaperExecution(
+  host: ExposureReservationHost,
+  reservationId: string,
+  expectedVersion: number,
+  commit: (view: ExposureReservationExecutionView) => void,
+  options: { now?: Date } = {},
+): ExposureReservationPaperCommitResult {
+  const runtime = runtimeOf(host);
+  const nowMs = (options.now ?? new Date()).getTime();
+  if (!Number.isFinite(nowMs)) return { status: "rejected", code: "INVALID_REQUEST", details: ["now"] };
+  pruneRuntime(runtime, nowMs);
+  const record = runtime.reservations.get(reservationId);
+  if (!record) return { status: "rejected", code: "RESERVATION_NOT_FOUND", details: ["reservation_unknown"] };
+  if (record.reservation.state !== "accepted_reserved") {
+    return { status: "rejected", code: "INVALID_RESERVATION_STATE", details: [record.reservation.state] };
+  }
+  if (record.version !== expectedVersion) {
+    return { status: "rejected", code: "STATE_CHANGED_REQUIRES_REEVALUATION", details: ["reservation_version_changed"] };
+  }
+  const view: ExposureReservationExecutionView = {
+    reservation: cloneReservation(record.reservation),
+    plan: clonePlan(record.plan),
+    evaluation: cloneEvaluation(record.evaluation),
+    resources: { ...record.resources },
+    version: record.version,
+  };
+  try {
+    commit(view);
+  } catch {
+    return { status: "rejected", code: "INVALID_RESERVATION_STATE", details: ["paper_commit_failed"] };
+  }
+  transitionRelease(runtime, record, "paper_executed", nowMs);
+  return { status: "paper_executed", reservation: cloneReservation(record.reservation) };
 }
 
 function sumResource(

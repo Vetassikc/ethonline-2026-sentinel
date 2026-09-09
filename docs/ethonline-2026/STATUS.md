@@ -1,10 +1,11 @@
-# Status — September 8, 2026
+# Status — September 9, 2026
 
 ## FACT — verified now
 
 - The public repository is isolated on `ethonline-2026/position-evidence`; the
-  historical upstream tree was not rewritten and no push was performed in
-  this work session.
+  historical upstream tree was not rewritten. The reviewed Task 3/Task 4A
+  baseline is published as commit `aa95f40` on the explicit `ethonline`
+  remote; Task 4B is a separate bounded checkpoint.
 - The configured The Graph source passed a read-only `_meta` preflight with
   fresh indexed metadata and no indexing errors during the recorded check.
 - A bounded live account query returned a complete page containing the
@@ -41,14 +42,14 @@
 - `GET /exposure-graph` renders the graph, provenance, editable Task 3
   read-only plan/repair console and a separately accessible legacy
   single-purchase demo. The screen has no reservation, signing, execution or
-  runtime what-if controls; the new internal Task 4A ledger is not exposed by
-  the route. Legacy permit/replay controls are enabled only by their own
-  eligible stored evaluation.
+  runtime what-if controls; the Task 4A ledger and Task 4B operator routes are
+  not exposed by this screen. Legacy permit/replay controls are enabled only
+  by their own eligible stored evaluation.
 - Task 1/2 exact plan validation, accounting, diagnostic projection and repair
-  checks remain green. After the current Task 3/Task 4A correction checkpoint,
-  the focused service/UI/lifecycle/reservation checks pass `39/39`, and
-  `npm test` passes `238` tests with zero failures, skips or todos; JavaScript
-  syntax and `git diff --check` pass.
+  checks remain green. The Task 3/Task 4A correction checks remain `39/39`,
+  the Task 4B focused checks pass `15/15`, and `npm test` passes `253` tests
+  with zero failures, skips or todos; JavaScript syntax and `git diff --check`
+  pass.
 - The smallest external-client path is implemented locally as a native-fetch
   provider-selectable Responses wrapper around `sentinel_exposure_graph`; the
   focused provider tests pass `6/6`. It is bounded to two AI requests, one
@@ -168,10 +169,42 @@
   during refresh. Both return without a new reservation or capacity debit;
   runtime generation, session, mode and source identity mismatches reject
   stale admission.
-- This is an internal admission/accounting core only. No Task 4B HTTP
-  acceptance route, plan permit, signing, execution, paper overlay, runtime
-  what-if or reservation UI was added. It must not be presented as completed
-  plan authorization or execution.
+- This is the internal Task 4A admission/accounting layer underneath the
+  bounded Task 4B operator boundary. Task 4A alone is not authorization or
+  execution; Task 4B adds only the local, paper-only route lifecycle described
+  below.
+
+## FACT — Task 4B bounded local paper-authorization boundary
+
+- A separate operator session is established server-side through
+  `GET /api/exposure/operator/session`. Mutation routes require the opaque
+  `HttpOnly; SameSite=Strict` cookie, the fixed local `Origin` and `Host`, and
+  the session-bound `x-sentinel-csrf` value. The session response excludes the
+  private cookie token and internal expiry milliseconds.
+- The bounded mutation surface is explicit and separate from the read-only
+  planner: operator acceptance, plan-bound permit issuance, pure permit
+  verification, paper execution and cancellation. Request bodies accept no
+  caller-selected account, policy, provider, signer, chain, token or calldata;
+  authority remains server-owned.
+- `sentinel-exposure-plan-permit.v1` binds the exact plan hash, agent, server
+  account, policy, evidence reference, graph hash, reservation, session,
+  runtime generation, mode, expiry, nonce and fixed audience. Cryptographic
+  validity is reported separately from current execution eligibility, which
+  remains `UNVERIFIED_UNTIL_FRESH_RECHECK` until the execution boundary passes.
+- A bounded controlled-source lifecycle passed: operator session → accepted
+  plan → reservation → plan permit → pure verification → deferred fresh-source
+  recheck → `PAPER_EXECUTED` overlay. Reusing the same permit returned
+  `NONCE_ALREADY_USED`; source failure, context/state changes during refresh,
+  stale sessions and what-if mode remained fail-closed. Sequential paper
+  executions use the effective overlay exactly once; the overlay response
+  excludes the server account field.
+- These Task 4B checks use a server-issued `FIXTURE` evaluation reference.
+  The operator session mode `live` does not relabel fixture provenance as live,
+  and this evidence is not a live paper execution, wallet transaction,
+  production authorization or durable ledger. No wallet transaction was sent.
+- Task 4B remains process-local and in-memory. Restart invalidates generation-
+  bound state; no Task 5 runtime what-if, reservation UI or external planner
+  integration is included.
 
 ## FACT — bounded diagnosis and live paper gate
 
@@ -329,10 +362,9 @@ though the tool/source chain was demonstrated. No retry followed.
   not retained by the wrapper.
 - Evaluation references, pending-account locks and consumed nonces are
   process-local in-memory state and disappear on restart.
-- Task 4A reservations are also process-local and invalid after a new runtime
-  generation. Task 4B still has to add the operator/session boundary,
-  plan-bound permit, fresh paper recheck, overlay execution and what-if
-  integration before any reservation can be called an authorization.
+- Task 4A reservations and the Task 4B operator/session state are process-local
+  and invalid after a new runtime generation. Task 5 runtime what-if,
+  reservation UI and planner-tool integration remain outside this checkpoint.
 - No production deployment, wallet transaction, live trade, portal
   submission, outbound message, adoption, partnership, revenue, audit,
   security assurance or prize outcome is claimed.
@@ -382,9 +414,9 @@ dependency mutation was performed.
 3. Founder reviews the submission draft, records the narrated 2–4 minute video,
    checks the live Hacker Dashboard fields and decides separately whether to
    publish the project.
-4. Task 4B remains a separate review gate for operator-session routes,
-   plan-bound permits, fresh paper execution and runtime what-if integration;
-   the current Task 4A core must not be narrated as those capabilities.
+4. Review this Task 4B checkpoint separately from Task 5. Do not narrate the
+   controlled fixture lifecycle as live paper execution, durable authorization,
+   runtime what-if integration or wallet execution.
 
 ## Authority boundary
 

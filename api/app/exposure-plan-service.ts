@@ -213,6 +213,10 @@ function planProvenance(mode: ExposureMode): ExposureSourceProvenance {
   return "FIXTURE";
 }
 
+export function exposurePlanSourceProvenance(mode: ExposureMode): ExposureSourceProvenance {
+  return planProvenance(mode);
+}
+
 function providerLabel(graph: ExposureGraphV1, kind: "graph" | "rpc"): "The Graph" | "Base JSON-RPC" | "fixture" | "unknown" {
   if (graph.mode === "fixture") return "fixture";
   if (kind === "graph") return graph.source.graph_subgraph_id ? "The Graph" : "unknown";
@@ -328,6 +332,15 @@ function deriveInitialState(graph: ExposureGraphV1, policy: ExposurePlanPolicy):
   } catch {
     return { ok: false, reason_codes: [...new Set([...reasons, "malformed_source_quantity"])] };
   }
+}
+
+export function deriveExposurePlanAccountingState(
+  evaluation: ExposureEvaluation,
+  policy: ExposurePlanPolicy = DEFAULT_EXPOSURE_PLAN_POLICY,
+):
+  | { ok: true; state: ExposureAccountingState }
+  | { ok: false; reason_codes: string[] } {
+  return deriveInitialState(evaluation.graph, policy);
 }
 
 function qualifySource(evaluation: ExposureEvaluation, policy: ExposurePlanPolicy): ExposureSourceQualification {

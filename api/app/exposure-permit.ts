@@ -24,6 +24,20 @@ const BYTES32_PATTERN = /^0x[0-9a-f]{64}$/i;
 const SIGNATURE_PATTERN = /^0x[0-9a-f]{130}$/i;
 const UINT256_MAX = (1n << 256n) - 1n;
 
+export function signDemoExposureDigest(digest: string): string {
+  if (!/^0x[0-9a-f]{64}$/i.test(digest)) throw new Error("invalid_demo_digest");
+  return DEMO_EXPOSURE_PERMIT_WALLET.signingKey.sign(digest).serialized;
+}
+
+export function getDemoExposureSignerAddress(): string {
+  return DEMO_EXPOSURE_PERMIT_WALLET.address;
+}
+
+export function isTrustedDemoExposureSigner(address: string): boolean {
+  return isAddress(address)
+    && address.toLowerCase() === DEMO_EXPOSURE_PERMIT_WALLET.address.toLowerCase();
+}
+
 const EXPOSURE_PERMIT_FIELDS: Array<{ name: string; type: string }> = [
   { name: "schemaVersion", type: "string" },
   { name: "action", type: "string" },
@@ -249,7 +263,7 @@ export function issueExposurePermit(
   } catch {
     return { status: "blocked", reason: "invalid_permit_parameters" };
   }
-  const signature = DEMO_EXPOSURE_PERMIT_WALLET.signingKey.sign(permitHash).serialized;
+  const signature = signDemoExposureDigest(permitHash);
   return {
     status: "issued",
     permit: {

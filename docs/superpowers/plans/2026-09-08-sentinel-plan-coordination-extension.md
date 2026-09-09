@@ -26,12 +26,12 @@
   below names a proposed local commit grouping for founder review; after
   implementation, create those commits only when the corresponding task is
   verified. Never push without explicit approval.
-- The earlier implementation checkpoint covered Tasks 1 and 2; Task 3 is now
-  the read-only service/UI baseline. The current bounded checkpoint fixes the
-  Task 3 cross-kind request lifecycle and corrects Task 4A's internal
-  process-local reservation retention/context boundaries only. Do not begin
-  Task 4B authorization routes, signing, execution, runtime what-if work,
-  planner-tool integration or new UI controls in the same milestone.
+- The earlier implementation checkpoint covered Tasks 1 and 2; Task 3 is the
+  read-only service/UI baseline and Task 4A is the internal process-local
+  reservation core. The current bounded checkpoint implements Task 4B's local
+  operator/session, plan-bound permit and paper-only lifecycle on top of that
+  core. Do not begin Task 5 runtime what-if work, planner-tool integration or
+  new reservation UI controls in the same milestone.
 - Do not modify docs/ethonline-2026/NEW_CHAT_EXECUTION_PROMPT.md or docs/ethonline-2026/STRATEGY_REVIEW_2026-09-07.md.
 
 ## Pre-task 0: Keep the bounded Aave mismatch audit separate from pure-engine work
@@ -370,8 +370,10 @@ Result: 11/11 focused tests pass, including actual handler route checks.
 
 Run: `npm test`
 
-Result: 210/210 tests pass; old `/judge`, `/operator`, `/position-evidence`
-and single-purchase exposure behavior remain available.
+Result: the original Task 3 focused checks and the full regression pass; after
+Task 4B, the full suite is `253/253` with no failures, skips or todos. Old
+`/judge`, `/operator`, `/position-evidence` and single-purchase exposure
+behavior remain available.
 
 Proposed commit: feat: add plan repair decision console
 
@@ -435,16 +437,19 @@ rejected with only `.05` total headroom remaining. Protocol-cap contention is
 kept as a separate supply `.15` rejection. This checkpoint is not completed
 plan authorization or execution.
 
-Proposed commit grouping after founder review: `feat: coordinate shared
-exposure reservations` (not created in this worktree).
+The reviewed Task 4A baseline was published as commit `aa95f40` on the
+explicit `ethonline` remote. Task 4B is kept in a separate commit grouping.
 
 ## Task 4B: Add atomic shared reservations and plan-bound authorization
 
 **Files:**
 - Create: api/app/exposure-plan-permit.ts
+- Create: api/app/exposure-plan-authorization.ts
 - Create: api/tests/exposure-plan-permit.test.ts
+- Modify: api/app/exposure-permit.ts
+- Modify: api/app/exposure-plan-service.ts
+- Modify: api/app/exposure-reservations.ts
 - Modify: api/app/server.ts
-- Modify: api/tests/exposure-routes.test.ts
 
 **Interfaces:**
 - Consumes: the Task 4A reservation core, ExposurePlanEvaluation,
@@ -454,7 +459,7 @@ exposure reservations` (not created in this worktree).
   operator-session boundary and the plan reservation routes. Task 4A's
   internal admission and lifecycle are already implemented above.
 
-- [ ] **Step 1: Add the Task 4B operator/session boundary on top of Task 4A.**
+- [x] **Step 1: Add the Task 4B operator/session boundary on top of Task 4A.**
 
 Add the ephemeral operator session, paper overlay state and execution-bound
 state on top of the Task 4A runtime without changing the legacy permit path. The
@@ -463,7 +468,7 @@ operator session must be established server-side and protected by an
 and a session-bound CSRF nonce; this is a local demo boundary, not unrestricted
 founder authentication.
 
-- [ ] **Step 2: Write Task 4B authorization and execution tests.**
+- [x] **Step 2: Write Task 4B authorization and execution tests.**
 
 Task 4B tests must cover the operator-session and CSRF boundary, plan-bound
 permit payload and verification, simulation-mode rejection at the execution
@@ -473,7 +478,7 @@ headroom, protocol cap, inventory, idempotency, release, source refresh and
 state-race cases; do not treat those internal tests as proof of Task 4B
 authorization or execution.
 
-- [ ] **Step 3: Connect operator acceptance to the Task 4A admission and
+- [x] **Step 3: Connect operator acceptance to the Task 4A admission and
   explicit lifecycle.**
 
 Expose the already implemented `acceptExposurePlan()` and lifecycle through an
@@ -483,11 +488,11 @@ accounting and idempotency behavior.
 
 Use one transition function with a release event ID. `paper_executed` applies the complete validated plan to the overlay before releasing pending capacity; the overlay then supplies the new effective state. A later request never counts both the base graph and the applied paper delta. The execution recheck excludes only the executing reservation's own ID; all other active reservations remain in the effective-state calculation.
 
-- [ ] **Step 4: Add plan-bound EIP-712 permit and restart boundary.**
+- [x] **Step 4: Add plan-bound EIP-712 permit and restart boundary.**
 
 Implement sentinel-exposure-plan-permit.v1 with fields from the design spec. The payload must include exact plan hash, agent, evidence ref, graph hash, reservation, runtime generation, session ID, explicit `mode: "live" | "what_if"`, expiry, nonce and fixed audience. Verification is pure. Execution rejects `mode: "what_if"` with `SIMULATION_NOT_EXECUTABLE`, rejects old generation with `RUNTIME_RESTART_INVALIDATED`, keeps the signature cryptographically separate from current executable status, and consumes nonce only after fresh conditions and reservation state pass.
 
-- [ ] **Step 5: Add routes and run focused regression.**
+- [x] **Step 5: Add routes and run focused regression.**
 
 Add the session and exact-body routes:
 
@@ -533,7 +538,14 @@ the relevant quantities, identities and policy remain acceptable. Changed live
 quantities with an existing paper overlay require a new paper session and do
 not merge live and simulated values.
 
-Expected: lifecycle, restart, replay, nonce and all historical route tests pass. No wallet transaction or external provider/model request occurs.
+Result: Task 4B focused checks pass `15/15`; the full suite passes `253/253`
+with no failures, skips or todos. The tests cover the operator boundary,
+partial acceptance, exact route-level two-agent contention, deferred refresh
+fail-closed behavior, overlay non-double-counting, source block/hash refresh,
+what-if rejection, permit replay and session isolation. The controlled
+lifecycle uses a server-issued `FIXTURE` source reference; it is not live
+paper execution. No wallet transaction or paid external provider/model
+request occurred.
 
 Proposed commit: feat: add plan-bound authorization and paper execution
 

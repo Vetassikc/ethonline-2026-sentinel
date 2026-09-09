@@ -27,6 +27,23 @@ import {
   evaluateExposurePlanRequest,
   issueExposurePlanFixtureReference,
 } from "./exposure-plan-service.ts";
+import {
+  acceptExposurePlanForOperator,
+  authorizeExposureOperatorMutation,
+  buildExposurePlanRefreshSnapshot,
+  cancelExposurePlanReservation,
+  createExposurePlanOperatorSession,
+  executeExposurePlanReservation,
+  getExposureOperatorCookieToken,
+  isExposureOperatorHostAllowed,
+  issueExposurePlanPermitForReservation,
+  verifyExposurePlanPermitForOperator,
+  type ExposurePlanOperatorBoundaryConfig,
+  type ExposurePlanOperatorSession,
+  type ExposurePlanRefreshResult,
+  type OperatorRequestHeaders,
+} from "./exposure-plan-authorization.ts";
+import { validateSignedExposurePlanPermit } from "./exposure-plan-permit.ts";
 import { MAX_EXPOSURE_REQUEST_UNITS, validateExposureRequest } from "./exposure-request.ts";
 import { runGraphPositionQuery, type GraphFetchLike } from "./graph-client.ts";
 import { buildKrakenCliPaperSmokeArtifact } from "./kraken-cli-compat.ts";
@@ -49,12 +66,13 @@ import {
   isSupportedAgentRegistryAnchor,
 } from "./shared-sepolia.ts";
 import { resolveGraphPositionOptions } from "../../scripts/graph-position.ts";
-import type { ExposureEvaluation } from "../../shared/schemas/exposure-graph.ts";
+import type { ExposureEvaluation, ExposureRequest } from "../../shared/schemas/exposure-graph.ts";
 
 type JudgeModeResponse = {
   statusCode: number;
   payload: unknown;
   contentType?: string;
+  headers?: Record<string, string | string[]>;
 };
 
 export type PositionEvidenceRequestDependencies = {
@@ -65,6 +83,8 @@ export type PositionEvidenceRequestDependencies = {
 
 export type JudgeModeRequestDependencies = PositionEvidenceRequestDependencies & {
   exposureDependencies?: ExposureServiceDependencies;
+  operatorBoundary?: ExposurePlanOperatorBoundaryConfig;
+  planRefresh?: () => Promise<ExposurePlanRefreshResult>;
 };
 
 type ServerEnv = {
@@ -162,6 +182,7 @@ function respond(
     : JSON.stringify(result.payload, null, 2);
 
   response.writeHead(result.statusCode, {
+    ...(result.headers ?? {}),
     "content-type": result.contentType ?? "application/json; charset=utf-8",
     "content-length": Buffer.byteLength(body),
   });
@@ -217,6 +238,34 @@ function resolveExposureDependencies(
     now: exposureDependencies.now ?? dependencies.now,
     runtimeState: exposureDependencies.runtimeState ?? EXPOSURE_RUNTIME_STATE,
   };
+}
+
+const PLAN_REFRESH_REQUEST: ExposureRequest = {
+  schema_version: "sentinel-exposure-buy.v1",
+  action: "BUY_EXPOSURE",
+  asset: "wstETH",
+  unit: "wstETH",
+  requested_units: "0.000000000000000000",
+};
+
+async function refreshExposurePlanSource(
+  dependencies: JudgeModeRequestDependencies,
+  exposureDependencies: ExposureServiceDependencies,
+  runtimeState: ExposureRuntimeState,
+  session: ExposurePlanOperatorSession,
+): Promise<ExposurePlanRefreshResult> {
+  if (dependencies.planRefresh) return dependencies.planRefresh();
+  const refreshed = await evaluateExposureRequest(PLAN_REFRESH_REQUEST, exposureDependencies);
+  if (refreshed.status !== "ok" || !refreshed.evaluation_ref) {
+    return { status: "blocked", code: "SOURCE_UNAVAILABLE" };
+  }
+  const evaluation = getStoredExposureEvaluation(runtimeState, refreshed.evaluation_ref, exposureDependencies.now ?? new Date());
+  if (!evaluation) return { status: "blocked", code: "SOURCE_UNAVAILABLE" };
+  return buildExposurePlanRefreshSnapshot(refreshed.evaluation_ref, evaluation, {
+    session_id: session.session_id,
+    runtime_generation: session.runtime_generation,
+    mode: "live",
+  });
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -539,6 +588,7 @@ export async function handleJudgeModeRequest(
   pathname: string,
   rawBody: string,
   dependencies: JudgeModeRequestDependencies = {},
+  requestContext: { headers?: OperatorRequestHeaders } = {},
 ): Promise<JudgeModeResponse> {
   if (method === "POST" && Buffer.byteLength(rawBody, "utf8") > MAX_REQUEST_BODY_BYTES) {
     return {
@@ -575,6 +625,24 @@ export async function handleJudgeModeRequest(
     }
   }
 
+  if (method === "GET" && pathname === "/api/exposure/operator/session") {
+    if (!isExposureOperatorHostAllowed(requestContext.headers ?? {}, dependencies.operatorBoundary)) {
+      return { statusCode: 403, payload: { error: "operator_host_rejected" } };
+    }
+    const exposureDependencies = resolveExposureDependencies(dependencies);
+    const runtimeState = exposureDependencies.runtimeState ?? EXPOSURE_RUNTIME_STATE;
+    const issued = createExposurePlanOperatorSession(runtimeState, {
+      cookie_token: getExposureOperatorCookieToken(requestContext.headers ?? {}),
+      now: exposureDependencies.now ?? new Date(),
+      boundary: dependencies.operatorBoundary,
+    });
+    return {
+      statusCode: 200,
+      payload: issued.session,
+      ...(issued.set_cookie ? { headers: { "set-cookie": issued.set_cookie } } : {}),
+    };
+  }
+
   if (method === "GET") {
     const scenarioBundle = await buildScenarioBundle(pathname, dependencies);
     if (scenarioBundle) {
@@ -583,6 +651,28 @@ export async function handleJudgeModeRequest(
   }
 
   if (method === "POST" && pathname.startsWith("/api/exposure/")) {
+    const exposureDependencies = resolveExposureDependencies(dependencies);
+    const now = exposureDependencies.now ?? new Date();
+    const runtimeState = exposureDependencies.runtimeState ?? EXPOSURE_RUNTIME_STATE;
+    const operatorMutationRoutes = new Set([
+      "/api/exposure/plan/accept",
+      "/api/exposure/reservation/execute",
+      "/api/exposure/reservation/cancel",
+      "/api/exposure/plan/permit",
+      "/api/exposure/plan/verify",
+    ]);
+    let operatorSession: Parameters<typeof acceptExposurePlanForOperator>[1] | undefined;
+    if (operatorMutationRoutes.has(pathname)) {
+      const authorization = authorizeExposureOperatorMutation(
+        runtimeState,
+        requestContext.headers ?? {},
+        { now, boundary: dependencies.operatorBoundary },
+      );
+      if (!authorization.ok) {
+        return { statusCode: authorization.statusCode, payload: authorization.payload };
+      }
+      operatorSession = authorization.session;
+    }
     let payload: unknown;
     try {
       payload = rawBody.length === 0 ? {} : JSON.parse(rawBody);
@@ -593,16 +683,95 @@ export async function handleJudgeModeRequest(
       };
     }
 
-    const exposureDependencies = resolveExposureDependencies(dependencies);
-    const now = exposureDependencies.now ?? new Date();
-    const runtimeState = exposureDependencies.runtimeState ?? EXPOSURE_RUNTIME_STATE;
-
     if (pathname === "/api/exposure/plan/validate") {
       const result = evaluateExposurePlanRequest(payload, {
         runtimeState,
         now,
       });
       return result;
+    }
+
+    if (pathname === "/api/exposure/plan/accept") {
+      if (!operatorSession || !isRecord(payload) || !hasExactKeys(payload, ["evaluation_ref", "plan", "idempotency_key", "accept_partial"])) {
+        return invalidExposureRouteRequest("Only evaluation_ref, plan, idempotency_key and accept_partial are accepted.");
+      }
+      return acceptExposurePlanForOperator(runtimeState, operatorSession, {
+        evaluation_ref: payload.evaluation_ref as string,
+        plan: payload.plan,
+        idempotency_key: payload.idempotency_key as string,
+        accept_partial: payload.accept_partial as boolean,
+      }, { now });
+    }
+
+    if (pathname === "/api/exposure/reservation/cancel") {
+      if (!operatorSession || !isRecord(payload) || !hasExactKeys(payload, ["reservation_id", "reason"])) {
+        return invalidExposureRouteRequest("Only reservation_id and reason are accepted.");
+      }
+      if (typeof payload.reservation_id !== "string" || typeof payload.reason !== "string") {
+        return invalidExposureRouteRequest("reservation_id and reason must be bounded strings.");
+      }
+      return cancelExposurePlanReservation(runtimeState, operatorSession, {
+        reservation_id: payload.reservation_id,
+        reason: payload.reason,
+      }, { now });
+    }
+
+    if (pathname === "/api/exposure/plan/permit") {
+      if (!operatorSession || !isRecord(payload) || !hasExactKeys(payload, ["reservation_id", "session_id", "mode"])) {
+        return invalidExposureRouteRequest("Only reservation_id, session_id and mode are accepted.");
+      }
+      if (typeof payload.reservation_id !== "string" || typeof payload.session_id !== "string" || (payload.mode !== "live" && payload.mode !== "what_if")) {
+        return invalidExposureRouteRequest("reservation_id, session_id and mode are bounded values.");
+      }
+      return issueExposurePlanPermitForReservation(runtimeState, operatorSession, {
+        reservation_id: payload.reservation_id,
+        session_id: payload.session_id,
+        mode: payload.mode,
+      }, { now });
+    }
+
+    if (pathname === "/api/exposure/plan/verify") {
+      if (!operatorSession || !isRecord(payload) || !hasExactKeys(payload, ["permit", "session_id", "mode"])) {
+        return invalidExposureRouteRequest("Only permit, session_id and mode are accepted.");
+      }
+      if (typeof payload.session_id !== "string" || (payload.mode !== "live" && payload.mode !== "what_if")) {
+        return invalidExposureRouteRequest("session_id and mode are bounded values.");
+      }
+      const permitValidation = validateSignedExposurePlanPermit(payload.permit);
+      if (!permitValidation.ok) return { statusCode: 400, payload: { error: "invalid_plan_permit", details: permitValidation.details } };
+      if (payload.session_id !== operatorSession.session_id || payload.mode !== permitValidation.permit.payload.mode) {
+        return { statusCode: 409, payload: { status: "rejected", code: "SESSION_CONTEXT_MISMATCH" } };
+      }
+      return { statusCode: 200, payload: verifyExposurePlanPermitForOperator(permitValidation.permit, now) };
+    }
+
+    if (pathname === "/api/exposure/reservation/execute") {
+      if (!operatorSession || !isRecord(payload) || !hasExactKeys(payload, ["reservation_id", "permit", "session_id", "mode"])) {
+        return invalidExposureRouteRequest("Only reservation_id, permit, session_id and mode are accepted.");
+      }
+      if (typeof payload.reservation_id !== "string" || typeof payload.session_id !== "string" || (payload.mode !== "live" && payload.mode !== "what_if")) {
+        return invalidExposureRouteRequest("reservation_id, session_id and mode are bounded values.");
+      }
+      const permitValidation = validateSignedExposurePlanPermit(payload.permit);
+      if (!permitValidation.ok) return { statusCode: 400, payload: { error: "invalid_plan_permit", details: permitValidation.details } };
+      if (payload.session_id !== operatorSession.session_id || payload.mode !== permitValidation.permit.payload.mode) {
+        return { statusCode: 409, payload: { status: "rejected", code: "SESSION_CONTEXT_MISMATCH" } };
+      }
+      const result = await executeExposurePlanReservation(
+        runtimeState,
+        {
+          reservation_id: payload.reservation_id,
+          permit: permitValidation.permit,
+          session_id: payload.session_id,
+          mode: payload.mode,
+          now,
+        },
+        () => refreshExposurePlanSource(dependencies, exposureDependencies, runtimeState, operatorSession!),
+      );
+      return {
+        statusCode: result.status === "paper_executed" ? 200 : result.code === "CURRENT_SOURCE_UNAVAILABLE" ? 503 : 409,
+        payload: result,
+      };
     }
 
     if (pathname === "/api/exposure/evaluate") {
@@ -850,7 +1019,23 @@ export async function handleJudgeModeRequest(
   };
 }
 
-export function createJudgeModeServer() {
+export function createJudgeModeServer(options: { operatorBoundary?: ExposurePlanOperatorBoundaryConfig } = {}) {
+  const serverConfig = resolveServerConfig();
+  const configuredOrigin = options.operatorBoundary?.allowed_origin
+    ?? process.env.SENTINEL_ALLOWED_ORIGIN
+    ?? `http://127.0.0.1:${serverConfig.port}`;
+  const operatorBoundary: ExposurePlanOperatorBoundaryConfig = {
+    ...options.operatorBoundary,
+    allowed_origin: configuredOrigin,
+    allowed_host: options.operatorBoundary?.allowed_host
+      ?? (() => {
+        try {
+          return new URL(configuredOrigin).host;
+        } catch {
+          return `127.0.0.1:${serverConfig.port}`;
+        }
+      })(),
+  };
   return createServer(async (request, response) => {
     const requestUrl = new URL(request.url ?? "/", "http://127.0.0.1");
     const rawBodyResult = request.method === "POST"
@@ -867,6 +1052,8 @@ export function createJudgeModeServer() {
       request.method ?? "UNKNOWN",
       requestUrl.pathname,
       rawBodyResult.body,
+      { operatorBoundary },
+      { headers: request.headers },
     );
     respond(response, result);
   });
