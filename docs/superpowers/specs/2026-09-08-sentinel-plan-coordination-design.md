@@ -717,7 +717,24 @@ mutating routes require a server-issued ephemeral `HttpOnly`,
 is non-destructive: a first local bootstrap is allowed without CSRF, but a
 missing/stale cookie cannot rotate an existing context, and foreign `Origin`
 or cross-site Fetch Metadata is rejected before state mutation. Explicit
-rotation uses the authorized reset route below. The server rejects
+rotation uses the authorized reset route below. If a paper overlay remains
+after the current operator session expires, a separate recovery route may be
+used only with the exact still-recorded expired current session, its matching
+exact `Host`, a safe Fetch Metadata value, and a finite recovery window; an
+`Origin`, when present, must match. The explicit recovery POST additionally
+requires same-origin `Origin`/`Host`. Execution validity and recovery
+credential validity are separate: the execution session expires
+at its normal TTL, while the recovery window begins at that expiry and is
+server-bounded. The current defaults are a fifteen-minute execution TTL and a
+five-minute recovery window, with the configured recovery window capped at
+fifteen minutes. The retained HttpOnly cookie covers both intervals. A
+non-mutating recovery GET returns a server-generated recovery CSRF challenge
+only within that window; the explicit recovery POST requires that challenge
+and the discard disposition. It rotates the session and discards the active
+paper overlay; it does not archive that overlay. Terminal reservation/nonce
+lifecycle records remain process-local history. Cookie-free bootstrap remains
+blocked until this recovery completes, and recovery-window expiry does not
+automatically delete the paper context. The server rejects
 cross-origin mutation and never exposes the signer secret. This is a demo
 interaction boundary, not production access control.
 
@@ -726,6 +743,8 @@ The exact operator routes are:
 ```text
 GET  /api/exposure/operator/session
 POST /api/exposure/operator/session/reset
+GET  /api/exposure/operator/session/recover
+POST /api/exposure/operator/session/recover
 POST /api/exposure/plan/accept
 POST /api/exposure/reservation/execute
 POST /api/exposure/reservation/cancel
@@ -741,6 +760,14 @@ POST /api/exposure/plan/accept
 
 POST /api/exposure/operator/session/reset
 {}
+
+GET /api/exposure/operator/session/recover
+Returns a non-mutating recovery challenge for the exact expired current
+session cookie while the server-owned recovery window is open.
+
+POST /api/exposure/operator/session/recover
+{"disposition":"discard_paper_context"}
+Header: x-sentinel-recovery-csrf: <server-issued recovery challenge>
 
 POST /api/exposure/reservation/execute
 {"reservation_id":"<server id>","permit":"<plan permit>","session_id":"<server session id>","mode":"live"}

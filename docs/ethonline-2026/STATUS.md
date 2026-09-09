@@ -48,8 +48,8 @@
   by their own eligible stored evaluation.
 - Task 1/2 exact plan validation, accounting, diagnostic projection and repair
   checks remain green. The Task 3/Task 4A correction checks remain `39/39`,
-  the Task 4B focused correction checks pass `25/25`, and `npm test` passes
-  `263` tests with zero failures, skips or todos; JavaScript syntax and
+  the Task 4B focused correction checks pass `29/29`, and `npm test` passes
+  `267` tests with zero failures, skips or todos; JavaScript syntax and
   `git diff --check` pass.
 - The smallest external-client path is implemented locally as a native-fetch
   provider-selectable Responses wrapper around `sentinel_exposure_graph`; the
@@ -234,8 +234,27 @@
   without CSRF. Explicit rotation is a same-origin, cookie-and-CSRF protected
   `POST /api/exposure/operator/session/reset`; rejected requests preserve the
   session, active reservation and existing paper overlay.
-- Focused `api/tests/exposure-plan-permit.test.ts` passes `25/25`; the full
-  suite passes `263/263`; Node syntax checks and `git diff --check` pass. This
+- After a paper overlay outlives the operator session, the regular reset remains
+  rejected with `operator_session_expired` and cookie-free bootstrap remains
+  rejected with `operator_session_required`. A separate
+  `GET /api/exposure/operator/session/recover` returns a non-mutating recovery
+  challenge only for that exact current expired session cookie, the exact
+  `Host`, and a safe Fetch Metadata value; an `Origin`, when present, must
+  match. The server grants a finite five-minute recovery window after the
+  fifteen-minute default execution TTL, bounded to fifteen minutes; the
+  HttpOnly cookie `Max-Age` covers execution TTL plus that recovery window. The
+  POST counterpart additionally requires the retained cookie, its recovery
+  CSRF challenge, same-origin `Origin`/`Host`, and the exact body
+  `{"disposition":"discard_paper_context"}`. It rotates to a new session and
+  explicitly discards the old active paper overlay; it does not archive that
+  overlay. At recovery-window expiry the normal cookie jar stops sending the
+  cookie, while the server does not automatically delete the paper context.
+  Terminal reservation/nonce lifecycle records remain only as process-local
+  historical state. Foreign origin, wrong recovery CSRF and cookie-free
+  requests preserve session, overlay and nonce state. This route does not
+  authorize a plan, issue a permit or execute anything.
+- Focused `api/tests/exposure-plan-permit.test.ts` passes `29/29`; the full
+  suite passes `267/267`; Node syntax checks and `git diff --check` pass. This
   is process-local paper authorization only. It does not establish durable
   authorization, production session security, wallet execution or Task 5.
 

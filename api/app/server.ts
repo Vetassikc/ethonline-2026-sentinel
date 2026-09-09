@@ -30,12 +30,14 @@ import {
 import {
   acceptExposurePlanForOperator,
   authorizeExposureOperatorBootstrap,
+  authorizeExposureOperatorRecovery,
   authorizeExposureOperatorMutation,
   buildExposurePlanRefreshSnapshot,
   cancelExposurePlanReservation,
   createExposurePlanOperatorSession,
   executeExposurePlanReservation,
   getExposureOperatorCookieToken,
+  getExposureOperatorRecoveryChallenge,
   isExposureOperatorHostAllowed,
   issueExposurePlanPermitForReservation,
   resetExposurePlanOperatorSession,
@@ -659,6 +661,19 @@ export async function handleJudgeModeRequest(
     };
   }
 
+  if (method === "GET" && pathname === "/api/exposure/operator/session/recover") {
+    const exposureDependencies = resolveExposureDependencies(dependencies);
+    const runtimeState = exposureDependencies.runtimeState ?? EXPOSURE_RUNTIME_STATE;
+    const operatorClock = resolveOperatorClock(dependencies, exposureDependencies);
+    const challenge = getExposureOperatorRecoveryChallenge(
+      runtimeState,
+      requestContext.headers ?? {},
+      { now: operatorClock(), boundary: dependencies.operatorBoundary },
+    );
+    if (!challenge.ok) return { statusCode: challenge.statusCode, payload: challenge.payload };
+    return { statusCode: 200, payload: challenge.challenge };
+  }
+
   if (method === "GET") {
     const scenarioBundle = await buildScenarioBundle(pathname, dependencies);
     if (scenarioBundle) {
@@ -680,6 +695,18 @@ export async function handleJudgeModeRequest(
       "/api/exposure/plan/verify",
     ]);
     let operatorSession: Parameters<typeof acceptExposurePlanForOperator>[1] | undefined;
+    let recoverySession: Parameters<typeof acceptExposurePlanForOperator>[1] | undefined;
+    if (pathname === "/api/exposure/operator/session/recover") {
+      const recoveryAuthorization = authorizeExposureOperatorRecovery(
+        runtimeState,
+        requestContext.headers ?? {},
+        { now, boundary: dependencies.operatorBoundary },
+      );
+      if (!recoveryAuthorization.ok) {
+        return { statusCode: recoveryAuthorization.statusCode, payload: recoveryAuthorization.payload };
+      }
+      recoverySession = recoveryAuthorization.session;
+    }
     if (operatorMutationRoutes.has(pathname)) {
       const authorization = authorizeExposureOperatorMutation(
         runtimeState,
@@ -719,6 +746,22 @@ export async function handleJudgeModeRequest(
         idempotency_key: payload.idempotency_key as string,
         accept_partial: payload.accept_partial as boolean,
       }, { now });
+    }
+
+    if (pathname === "/api/exposure/operator/session/recover") {
+      if (!recoverySession || !isRecord(payload) || !hasExactKeys(payload, ["disposition"]) || payload.disposition !== "discard_paper_context") {
+        return invalidExposureRouteRequest("Only disposition=discard_paper_context is accepted for expired-session recovery.");
+      }
+      const recovered = resetExposurePlanOperatorSession(runtimeState, recoverySession, {
+        now,
+        boundary: dependencies.operatorBoundary,
+      });
+      if (!recovered) return { statusCode: 409, payload: { error: "operator_session_recovery_unavailable" } };
+      return {
+        statusCode: 200,
+        payload: recovered.session,
+        headers: { "set-cookie": recovered.set_cookie },
+      };
     }
 
     if (pathname === "/api/exposure/operator/session/reset") {
@@ -1054,7 +1097,11 @@ export async function handleJudgeModeRequest(
   };
 }
 
-export function createJudgeModeServer(options: { operatorBoundary?: ExposurePlanOperatorBoundaryConfig } = {}) {
+export function createJudgeModeServer(options: {
+  operatorBoundary?: ExposurePlanOperatorBoundaryConfig;
+  exposureDependencies?: ExposureServiceDependencies;
+  planRefresh?: () => Promise<ExposurePlanRefreshResult>;
+} = {}) {
   const serverConfig = resolveServerConfig();
   const configuredOrigin = options.operatorBoundary?.allowed_origin
     ?? process.env.SENTINEL_ALLOWED_ORIGIN
@@ -1087,7 +1134,11 @@ export function createJudgeModeServer(options: { operatorBoundary?: ExposurePlan
       request.method ?? "UNKNOWN",
       requestUrl.pathname,
       rawBodyResult.body,
-      { operatorBoundary },
+      {
+        operatorBoundary,
+        exposureDependencies: options.exposureDependencies,
+        planRefresh: options.planRefresh,
+      },
       { headers: request.headers },
     );
     respond(response, result);

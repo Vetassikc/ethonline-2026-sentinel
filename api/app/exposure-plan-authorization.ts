@@ -39,6 +39,8 @@ export const OPERATOR_SESSION_COOKIE_NAME = "sentinel_operator_session";
 export const OPERATOR_SESSION_MODE = "live" as const;
 export const DEFAULT_OPERATOR_ORIGIN = "http://127.0.0.1:8787";
 export const DEFAULT_OPERATOR_SESSION_TTL_MS = 15 * 60_000;
+export const DEFAULT_OPERATOR_RECOVERY_WINDOW_MS = 5 * 60_000;
+export const MAX_OPERATOR_RECOVERY_WINDOW_MS = 15 * 60_000;
 
 const ACCOUNT_PATTERN = /^0x[0-9a-f]{40}$/i;
 const EVALUATION_REFERENCE_PATTERN = /^exposure_[0-9a-f]{32}$/;
@@ -47,6 +49,7 @@ export type ExposurePlanOperatorBoundaryConfig = {
   allowed_origin?: string;
   allowed_host?: string;
   session_ttl_ms?: number;
+  recovery_window_ms?: number;
   max_sessions?: number;
   clock?: ExposureServerClock;
 };
@@ -64,9 +67,21 @@ export type ExposurePlanOperatorSession = {
   expires_at: string;
 };
 
+export type ExposurePlanOperatorRecoveryChallenge = {
+  status: "recovery_required";
+  session_id: string;
+  runtime_generation: string;
+  policy_version: string;
+  mode: typeof OPERATOR_SESSION_MODE;
+  recovery_csrf_token: string;
+  recovery_expires_at: string;
+};
+
 type OperatorSessionRecord = ExposurePlanOperatorSession & {
   cookie_token: string;
   expires_at_ms: number;
+  recovery_csrf_token: string;
+  recovery_expires_at_ms: number;
 };
 
 type AcceptedPlanRecord = {
@@ -144,6 +159,10 @@ const AUTHORIZATION_RUNTIME_BY_STATE = new WeakMap<ExposureRuntimeState, Exposur
 
 function safePositiveInteger(value: number | undefined, fallback: number): number {
   return Number.isSafeInteger(value) && value! > 0 ? value! : fallback;
+}
+
+function boundedPositiveInteger(value: number | undefined, fallback: number, maximum: number): number {
+  return Number.isSafeInteger(value) && value! > 0 && value! <= maximum ? value! : fallback;
 }
 
 function runtimeOf(state: ExposureRuntimeState): ExposureReservationHost {
@@ -275,7 +294,7 @@ function boundaryHost(config: ExposurePlanOperatorBoundaryConfig): string {
 function cookieHeader(token: string, ttlMs: number): string {
   return OPERATOR_SESSION_COOKIE_NAME
     + "=" + token
-    + "; Max-Age=" + Math.floor(ttlMs / 1000)
+    + "; Max-Age=" + Math.max(1, Math.ceil(ttlMs / 1000))
     + "; Path=/; HttpOnly; SameSite=Strict";
 }
 
@@ -358,6 +377,12 @@ export function createExposurePlanOperatorSession(
   const nowMs = now.getTime();
   const authorization = getExposurePlanAuthorizationRuntime(state);
   const ttlMs = safePositiveInteger(options.boundary?.session_ttl_ms, DEFAULT_OPERATOR_SESSION_TTL_MS);
+  const recoveryWindowMs = boundedPositiveInteger(
+    options.boundary?.recovery_window_ms,
+    DEFAULT_OPERATOR_RECOVERY_WINDOW_MS,
+    MAX_OPERATOR_RECOVERY_WINDOW_MS,
+  );
+  const recoveryExpiresAtMs = nowMs + ttlMs + recoveryWindowMs;
   authorization.max_sessions = safePositiveInteger(options.boundary?.max_sessions, authorization.max_sessions);
   pruneOperatorSessions(authorization, nowMs);
   const requestedToken = options.cookie_token;
@@ -374,6 +399,7 @@ export function createExposurePlanOperatorSession(
   }
 
   const cookieToken = newOpaque("cookie");
+  const recoveryCsrfToken = newOpaque("recovery_csrf");
   const session: ExposurePlanOperatorSession = {
     session_id: newOpaque("session"),
     csrf_token: newOpaque("csrf"),
@@ -386,13 +412,15 @@ export function createExposurePlanOperatorSession(
     ...session,
     cookie_token: cookieToken,
     expires_at_ms: nowMs + ttlMs,
+    recovery_csrf_token: recoveryCsrfToken,
+    recovery_expires_at_ms: recoveryExpiresAtMs,
   };
   authorization.sessions.set(cookieToken, record);
   syncNewSessionContext(state, session);
   return {
     session,
     cookie: OPERATOR_SESSION_COOKIE_NAME + "=" + cookieToken,
-    set_cookie: cookieHeader(cookieToken, ttlMs),
+    set_cookie: cookieHeader(cookieToken, recoveryExpiresAtMs - nowMs),
   };
 }
 
@@ -457,6 +485,86 @@ export function authorizeExposureOperatorBootstrap(
   return { ok: true, cookie_token: null };
 }
 
+type ExposureOperatorRecoveryContextResult =
+  | { ok: true; record: OperatorSessionRecord }
+  | { ok: false; statusCode: number; payload: Record<string, unknown> };
+
+function authorizeExposureOperatorRecoveryContext(
+  state: ExposureRuntimeState,
+  headers: OperatorRequestHeaders,
+  options: { now?: Date; boundary?: ExposurePlanOperatorBoundaryConfig; require_origin?: boolean } = {},
+): ExposureOperatorRecoveryContextResult {
+  const nowMs = (options.now ?? new Date()).getTime();
+  const config = options.boundary ?? {};
+  const origin = headerValue(headers, "origin");
+  const host = headerValue(headers, "host");
+  if (options.require_origin !== false && origin !== boundaryOrigin(config)) {
+    return { ok: false, statusCode: 403, payload: { error: "operator_origin_rejected" } };
+  }
+  if (options.require_origin === false && origin !== null && origin !== boundaryOrigin(config)) {
+    return { ok: false, statusCode: 403, payload: { error: "operator_origin_rejected" } };
+  }
+  if (!host || host.toLowerCase() !== boundaryHost(config)) {
+    return { ok: false, statusCode: 403, payload: { error: "operator_host_rejected" } };
+  }
+  const fetchSite = headerValue(headers, "sec-fetch-site")?.toLowerCase();
+  if (fetchSite && !["same-origin", "same-site", "none"].includes(fetchSite)) {
+    return { ok: false, statusCode: 403, payload: { error: "operator_fetch_site_rejected" } };
+  }
+  const token = cookieValue(headers);
+  if (!token) return { ok: false, statusCode: 401, payload: { error: "operator_session_required" } };
+  const authorization = getExposurePlanAuthorizationRuntime(state);
+  const record = authorization.sessions.get(token);
+  if (!record) return { ok: false, statusCode: 401, payload: { error: "operator_session_invalid" } };
+  if (record.session_id !== state.reservation_runtime.session_id
+      || record.runtime_generation !== state.reservation_runtime.runtime_generation
+      || state.reservation_runtime.mode !== OPERATOR_SESSION_MODE) {
+    return { ok: false, statusCode: 403, payload: { error: "operator_session_stale" } };
+  }
+  if (record.expires_at_ms > nowMs) {
+    return { ok: false, statusCode: 409, payload: { error: "operator_recovery_requires_expired_session" } };
+  }
+  if (record.recovery_expires_at_ms <= nowMs) {
+    return { ok: false, statusCode: 401, payload: { error: "operator_recovery_window_expired" } };
+  }
+  return { ok: true, record };
+}
+
+function recoveryChallenge(record: OperatorSessionRecord): ExposurePlanOperatorRecoveryChallenge {
+  return {
+    status: "recovery_required",
+    session_id: record.session_id,
+    runtime_generation: record.runtime_generation,
+    policy_version: record.policy_version,
+    mode: record.mode,
+    recovery_csrf_token: record.recovery_csrf_token,
+    recovery_expires_at: new Date(record.recovery_expires_at_ms).toISOString(),
+  };
+}
+
+export function getExposureOperatorRecoveryChallenge(
+  state: ExposureRuntimeState,
+  headers: OperatorRequestHeaders,
+  options: { now?: Date; boundary?: ExposurePlanOperatorBoundaryConfig } = {},
+): { ok: true; challenge: ExposurePlanOperatorRecoveryChallenge } | { ok: false; statusCode: number; payload: Record<string, unknown> } {
+  const authorized = authorizeExposureOperatorRecoveryContext(state, headers, { ...options, require_origin: false });
+  if (!authorized.ok) return authorized;
+  return { ok: true, challenge: recoveryChallenge(authorized.record) };
+}
+
+export function authorizeExposureOperatorRecovery(
+  state: ExposureRuntimeState,
+  headers: OperatorRequestHeaders,
+  options: { now?: Date; boundary?: ExposurePlanOperatorBoundaryConfig } = {},
+): { ok: true; session: ExposurePlanOperatorSession } | { ok: false; statusCode: number; payload: Record<string, unknown> } {
+  const authorized = authorizeExposureOperatorRecoveryContext(state, headers, options);
+  if (!authorized.ok) return authorized;
+  if (headerValue(headers, "x-sentinel-recovery-csrf") !== authorized.record.recovery_csrf_token) {
+    return { ok: false, statusCode: 403, payload: { error: "operator_recovery_csrf_rejected" } };
+  }
+  return { ok: true, session: publicSession(authorized.record) };
+}
+
 export function resetExposurePlanOperatorSession(
   state: ExposureRuntimeState,
   session: ExposurePlanOperatorSession,
@@ -495,7 +603,6 @@ export function authorizeExposureOperatorMutation(
   const session = authorization.sessions.get(token);
   if (!session) return { ok: false, statusCode: 401, payload: { error: "operator_session_invalid" } };
   if (session.expires_at_ms <= nowMs) {
-    authorization.sessions.delete(token);
     return { ok: false, statusCode: 401, payload: { error: "operator_session_expired" } };
   }
   if (session.session_id !== state.reservation_runtime.session_id

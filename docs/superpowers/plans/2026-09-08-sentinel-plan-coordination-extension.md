@@ -499,6 +499,8 @@ Add the session and exact-body routes:
 ~~~text
 GET  /api/exposure/operator/session
 POST /api/exposure/operator/session/reset
+GET  /api/exposure/operator/session/recover
+POST /api/exposure/operator/session/recover
 POST /api/exposure/plan/accept
 POST /api/exposure/reservation/execute
 POST /api/exposure/reservation/cancel
@@ -513,11 +515,27 @@ are exactly:
 ~~~json
 {"evaluation_ref":"exposure_<32 hex>","plan":<ExposurePlanV1>,"idempotency_key":"<opaque client key>","accept_partial":false}
 {}
+{"disposition":"discard_paper_context"}
 {"reservation_id":"<server id>","permit":"<plan permit>","session_id":"<server session id>","mode":"live"}
 {"reservation_id":"<server id>","reason":"operator_cancel"}
 {"reservation_id":"<server id>","session_id":"<server session id>","mode":"live"}
 {"permit":"<plan permit>","session_id":"<server session id>","mode":"live"}
 ~~~
+
+`GET /api/exposure/operator/session/recover` is a non-mutating page-refresh
+challenge. It requires the exact current expired session cookie, same-origin
+boundary and a recovery window that has not elapsed, then returns a
+server-generated recovery CSRF value and its expiry. The execution session TTL
+and recovery window are separate: the default execution TTL is fifteen minutes,
+the default recovery window is five minutes after execution expiry, and the
+server bounds the configured recovery window to fifteen minutes. The cookie
+`Max-Age` covers both intervals so a normal cookie jar can retain the recovery
+credential. `POST /api/exposure/operator/session/recover` requires that
+challenge in `x-sentinel-recovery-csrf`; it rotates the session and explicitly
+discards the old paper overlay. It does not archive the overlay or authorize a
+plan, permit or execution. When the recovery window expires, a normal cookie
+jar omits the cookie and the paper context remains until an explicit recovery
+has occurred; there is no automatic context deletion.
 
 No route accepts a caller-selected account, policy, evidence, signer, provider,
 chain, token or calldata. A request with a mismatching same-origin/CSRF
@@ -575,10 +593,28 @@ Task 5 behavior.
   remains CSRF-free; explicit rotation is a same-origin, cookie-and-CSRF
   protected `POST /api/exposure/operator/session/reset` and invalidates the
   old context deliberately.
-- [x] Focused Task 4B correction checks pass `25/25`; full `npm test` passes
-  `263/263`; Node syntax checks and `git diff --check` pass. The tests include
-  actual route execution, bootstrap/reset boundaries, deferred refresh races,
-  overlay preservation and exact no-side-effect rejection assertions.
+- [x] Add a separate bounded recovery path for the expired-current-session
+  deadlock. Execution validity remains governed by `session_ttl_ms`; the
+  server-owned recovery window defaults to five minutes after expiry and is
+  bounded to fifteen minutes. The cookie `Max-Age` covers both intervals.
+  `GET /api/exposure/operator/session/recover` is a non-mutating page-refresh
+  challenge for the exact current expired cookie, exact `Host`, and safe Fetch
+  Metadata; an `Origin`, when present, must match. POST additionally requires
+  its separate `x-sentinel-recovery-csrf` value, same-origin `Origin`/`Host`,
+  and the exact `discard_paper_context` disposition. It is not a plan, permit or execution
+  authorization path. Recovery rotates the session and discards the active
+  paper overlay; it does not archive the overlay, while terminal
+  reservation/nonce lifecycle records remain process-local history. A normal
+  cookie jar stops sending the credential when the recovery window expires;
+  the server does not automatically delete the old paper context. Foreign
+  origin, wrong recovery CSRF and cookie-free requests preserve the prior
+  session, overlay and nonce state.
+- [x] Focused Task 4B correction checks pass `29/29`; full `npm test` passes
+  `267/267`; Node syntax checks and `git diff --check` pass. The tests include
+  actual HTTP route execution with automatic cookie handling, page-refresh
+  challenge, execution/recovery expiry boundaries, bootstrap/reset/recovery
+  boundaries, overlay preservation and exact no-side-effect rejection
+  assertions.
 
 The correction remains process-local paper execution, not durable authorization,
 wallet execution, production session security or Task 5 runtime what-if.

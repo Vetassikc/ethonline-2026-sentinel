@@ -83,6 +83,56 @@ function controlledClock(start = NOW) {
   };
 }
 
+class AutomaticCookieJar {
+  private nowMs: number;
+  private cookie: { name: string; value: string; expiresAtMs: number } | null = null;
+
+  constructor(start = NOW) {
+    this.nowMs = start.getTime();
+  }
+
+  advance(milliseconds: number) {
+    this.nowMs += milliseconds;
+    this.expireIfNeeded();
+  }
+
+  hasOperatorCookie(): boolean {
+    this.expireIfNeeded();
+    return this.cookie !== null;
+  }
+
+  async request(url: string, init: any = {}): Promise<Response> {
+    this.expireIfNeeded();
+    const headers = new Headers(init.headers);
+    if (this.cookie) headers.set("cookie", `${this.cookie.name}=${this.cookie.value}`);
+    const response = await fetch(url, { ...init, headers });
+    this.store(response.headers.get("set-cookie"));
+    return response;
+  }
+
+  private expireIfNeeded() {
+    if (this.cookie && this.nowMs >= this.cookie.expiresAtMs) this.cookie = null;
+  }
+
+  private store(setCookie: string | null) {
+    if (!setCookie) return;
+    const [pair, ...attributes] = setCookie.split(";");
+    const [name, ...valueParts] = pair.trim().split("=");
+    if (name !== "sentinel_operator_session") return;
+    const maxAgeAttribute = attributes.find((attribute) => attribute.trim().toLowerCase().startsWith("max-age="));
+    const maxAgeSeconds = Number(maxAgeAttribute?.trim().slice("max-age=".length));
+    if (!Number.isFinite(maxAgeSeconds) || maxAgeSeconds <= 0) {
+      this.cookie = null;
+      return;
+    }
+    this.cookie = {
+      name,
+      value: valueParts.join("="),
+      expiresAtMs: this.nowMs + maxAgeSeconds * 1000,
+    };
+  }
+}
+
 async function establish(
   state = createExposureRuntimeState(),
   options: { boundary?: Record<string, unknown> } = {},
@@ -197,7 +247,7 @@ test("plan permit is cryptographically plan-bound and verification stays separat
     source_provenance: "FIXTURE",
     now: NOW,
     nonce: "7",
-  } as any);
+  });
   assert.equal(issued.status, "issued");
   if (issued.status !== "issued") throw new Error("expected plan permit");
 
@@ -1078,6 +1128,419 @@ test("initial bootstrap is allowed without CSRF, but explicit reset requires the
     initial.headers,
   );
   assert.equal(oldSessionMutation.statusCode, 403);
+});
+
+test("an expired current operator session can explicitly recover the paper context after reset and bootstrap are rejected", async () => {
+  const clock = controlledClock();
+  const state = createExposureRuntimeState({ reservation: { reservation_ttl_ms: 600_000 } });
+  const reference = await fixtureReference(state);
+  const established = await establish(state, { boundary: { clock: clock.now, session_ttl_ms: 60_000 } });
+  const accepted = await acceptAndIssuePermit(state, reference, established, PLAN, "expired-session-recovery");
+  const executed = await handleJudgeModeRequest(
+    "POST",
+    "/api/exposure/reservation/execute",
+    JSON.stringify({ reservation_id: accepted.reservationId, permit: accepted.permit, session_id: established.payload.session_id, mode: "live" }),
+    {
+      exposureDependencies: { runtimeState: state, now: NOW },
+      operatorBoundary: { clock: clock.now, session_ttl_ms: 60_000 },
+      planRefresh: refreshFor(state, reference),
+    },
+    established.headers,
+  );
+  assert.equal(executed.statusCode, 200);
+  assert.equal((executed.payload as { code: string }).code, "PAPER_EXECUTED");
+  const beforeSession = state.reservation_runtime.session_id;
+  const beforeOverlay = structuredClone(getExposurePlanAuthorizationRuntime(state).paper_overlay);
+
+  const activeRecoveryRejected = await handleJudgeModeRequest(
+    "POST",
+    "/api/exposure/operator/session/recover",
+    JSON.stringify({ disposition: "discard_paper_context" }),
+    {
+      exposureDependencies: { runtimeState: state, now: NOW },
+      operatorBoundary: { clock: clock.now, session_ttl_ms: 60_000 },
+    },
+    established.headers,
+  );
+  assert.equal(activeRecoveryRejected.statusCode, 409);
+  assert.equal((activeRecoveryRejected.payload as { error: string }).error, "operator_recovery_requires_expired_session");
+  assert.equal(state.reservation_runtime.session_id, beforeSession);
+  assert.deepEqual(getExposurePlanAuthorizationRuntime(state).paper_overlay, beforeOverlay);
+
+  clock.advance(60_000);
+  const resetRejected = await handleJudgeModeRequest(
+    "POST",
+    "/api/exposure/operator/session/reset",
+    "{}",
+    {
+      exposureDependencies: { runtimeState: state, now: NOW },
+      operatorBoundary: { clock: clock.now, session_ttl_ms: 60_000 },
+    },
+    established.headers,
+  );
+  assert.equal(resetRejected.statusCode, 401);
+  assert.equal((resetRejected.payload as { error: string }).error, "operator_session_expired");
+  assert.equal(state.reservation_runtime.session_id, beforeSession);
+  assert.deepEqual(getExposurePlanAuthorizationRuntime(state).paper_overlay, beforeOverlay);
+
+  const bootstrapRejected = await handleJudgeModeRequest(
+    "GET",
+    "/api/exposure/operator/session",
+    "",
+    {
+      exposureDependencies: { runtimeState: state, now: NOW },
+      operatorBoundary: { clock: clock.now, session_ttl_ms: 60_000 },
+    },
+    { headers: { host: HOST, origin: ORIGIN } },
+  );
+  assert.equal(bootstrapRejected.statusCode, 401);
+  assert.equal((bootstrapRejected.payload as { error: string }).error, "operator_session_required");
+  assert.equal(state.reservation_runtime.session_id, beforeSession);
+  assert.deepEqual(getExposurePlanAuthorizationRuntime(state).paper_overlay, beforeOverlay);
+
+  const challenge = await handleJudgeModeRequest(
+    "GET",
+    "/api/exposure/operator/session/recover",
+    "",
+    {
+      exposureDependencies: { runtimeState: state, now: NOW },
+      operatorBoundary: { clock: clock.now, session_ttl_ms: 60_000 },
+    },
+    { headers: { host: HOST, origin: ORIGIN, cookie: established.cookie } },
+  );
+  assert.equal(challenge.statusCode, 200);
+  const recoveryCsrf = (challenge.payload as { recovery_csrf_token: string }).recovery_csrf_token;
+
+  const recovery = await handleJudgeModeRequest(
+    "POST",
+    "/api/exposure/operator/session/recover",
+    JSON.stringify({ disposition: "discard_paper_context" }),
+    {
+      exposureDependencies: { runtimeState: state, now: NOW },
+      operatorBoundary: { clock: clock.now, session_ttl_ms: 60_000 },
+    },
+    { headers: { host: HOST, origin: ORIGIN, cookie: established.cookie, "x-sentinel-recovery-csrf": recoveryCsrf } },
+  );
+  assert.equal(recovery.statusCode, 200);
+  assert.notEqual((recovery.payload as Record<string, string>).session_id, beforeSession);
+  assert.equal(getExposurePlanAuthorizationRuntime(state).paper_overlay, null);
+  assert.equal(state.reservation_runtime.mode, "live");
+});
+
+test("unauthorized expired-session recovery requests preserve the paper context", async () => {
+  const clock = controlledClock();
+  const state = createExposureRuntimeState({ reservation: { reservation_ttl_ms: 600_000 } });
+  const reference = await fixtureReference(state);
+  const established = await establish(state, { boundary: { clock: clock.now, session_ttl_ms: 60_000 } });
+  const accepted = await acceptAndIssuePermit(state, reference, established, PLAN, "expired-session-recovery-boundary");
+  const executed = await handleJudgeModeRequest(
+    "POST",
+    "/api/exposure/reservation/execute",
+    JSON.stringify({ reservation_id: accepted.reservationId, permit: accepted.permit, session_id: established.payload.session_id, mode: "live" }),
+    {
+      exposureDependencies: { runtimeState: state, now: NOW },
+      operatorBoundary: { clock: clock.now, session_ttl_ms: 60_000 },
+      planRefresh: refreshFor(state, reference),
+    },
+    established.headers,
+  );
+  assert.equal(executed.statusCode, 200);
+  clock.advance(60_000);
+  const beforeSession = state.reservation_runtime.session_id;
+  const beforeOverlay = structuredClone(getExposurePlanAuthorizationRuntime(state).paper_overlay);
+  const beforeConsumed = getExposurePlanAuthorizationRuntime(state).consumed_nonces.size;
+
+  const rejectedRequests = [
+    {
+      headers: { host: HOST, origin: "https://attacker.invalid", cookie: established.cookie, "x-sentinel-csrf": established.payload.csrf_token },
+      body: { disposition: "discard_paper_context" },
+      expectedStatus: 403,
+    },
+    {
+      headers: { host: HOST, origin: ORIGIN, cookie: established.cookie, "x-sentinel-recovery-csrf": "wrong-recovery-csrf" },
+      body: { disposition: "discard_paper_context" },
+      expectedStatus: 403,
+    },
+    {
+      headers: { host: HOST, origin: ORIGIN, cookie: "sentinel_operator_session=stale", "x-sentinel-csrf": established.payload.csrf_token },
+      body: { disposition: "discard_paper_context" },
+      expectedStatus: 401,
+    },
+  ];
+  for (const request of rejectedRequests) {
+    const response = await handleJudgeModeRequest(
+      "POST",
+      "/api/exposure/operator/session/recover",
+      JSON.stringify(request.body),
+      {
+        exposureDependencies: { runtimeState: state, now: NOW },
+        operatorBoundary: { clock: clock.now, session_ttl_ms: 60_000 },
+      },
+      { headers: request.headers },
+    );
+    assert.equal(response.statusCode, request.expectedStatus);
+    assert.equal(state.reservation_runtime.session_id, beforeSession);
+    assert.deepEqual(getExposurePlanAuthorizationRuntime(state).paper_overlay, beforeOverlay);
+    assert.equal(getExposurePlanAuthorizationRuntime(state).consumed_nonces.size, beforeConsumed);
+  }
+});
+
+test("automatic cookie handling survives execution expiry and obtains a recovery challenge after refresh", async () => {
+  const clock = controlledClock();
+  const sessionTtlMs = 60_000;
+  const recoveryWindowMs = 30_000;
+  const state = createExposureRuntimeState({ reservation: { reservation_ttl_ms: 600_000 } });
+  const reference = await fixtureReference(state);
+  const port = 18788;
+  const origin = `http://127.0.0.1:${port}`;
+  const server = createJudgeModeServer({
+    operatorBoundary: {
+      allowed_origin: origin,
+      allowed_host: `127.0.0.1:${port}`,
+      clock: clock.now,
+      session_ttl_ms: sessionTtlMs,
+      recovery_window_ms: recoveryWindowMs,
+    },
+    exposureDependencies: { runtimeState: state, now: NOW },
+    planRefresh: refreshFor(state, reference),
+  });
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(port, "127.0.0.1", () => resolve());
+  });
+
+  const jar = new AutomaticCookieJar();
+  try {
+    const sessionResponse = await jar.request(`${origin}/api/exposure/operator/session`, {
+      headers: {},
+    });
+    assert.equal(sessionResponse.status, 200);
+    const session = await sessionResponse.json() as Record<string, string>;
+    const setCookie = sessionResponse.headers.get("set-cookie") ?? "";
+    assert.match(setCookie, /Max-Age=90(?:;|$)/);
+    assert.match(setCookie, /HttpOnly; SameSite=Strict/);
+    assert.equal(jar.hasOperatorCookie(), true);
+
+    const acceptedResponse = await jar.request(`${origin}/api/exposure/plan/accept`, {
+      method: "POST",
+      headers: {
+        origin,
+        "content-type": "application/json",
+        "x-sentinel-csrf": session.csrf_token,
+      },
+      body: JSON.stringify({
+        evaluation_ref: reference,
+        plan: PLAN,
+        idempotency_key: "automatic-cookie-recovery",
+        accept_partial: false,
+      }),
+    });
+    assert.equal(acceptedResponse.status, 200);
+    const accepted = await acceptedResponse.json() as { reservation: { reservation_id: string } };
+
+    const permitResponse = await jar.request(`${origin}/api/exposure/plan/permit`, {
+      method: "POST",
+      headers: {
+        origin,
+        "content-type": "application/json",
+        "x-sentinel-csrf": session.csrf_token,
+      },
+      body: JSON.stringify({
+        reservation_id: accepted.reservation.reservation_id,
+        session_id: session.session_id,
+        mode: "live",
+      }),
+    });
+    assert.equal(permitResponse.status, 200);
+    const permit = await permitResponse.json() as { permit: unknown };
+
+    const executedResponse = await jar.request(`${origin}/api/exposure/reservation/execute`, {
+      method: "POST",
+      headers: {
+        origin,
+        "content-type": "application/json",
+        "x-sentinel-csrf": session.csrf_token,
+      },
+      body: JSON.stringify({
+        reservation_id: accepted.reservation.reservation_id,
+        permit: permit.permit,
+        session_id: session.session_id,
+        mode: "live",
+      }),
+    });
+    assert.equal(executedResponse.status, 200);
+    assert.equal((await executedResponse.json() as { code: string }).code, "PAPER_EXECUTED");
+    const beforeSession = state.reservation_runtime.session_id;
+    const beforeOverlay = structuredClone(getExposurePlanAuthorizationRuntime(state).paper_overlay);
+
+    const activeChallenge = await jar.request(`${origin}/api/exposure/operator/session/recover`, {
+      headers: {},
+    });
+    assert.equal(activeChallenge.status, 409);
+    assert.equal((await activeChallenge.json() as { error: string }).error, "operator_recovery_requires_expired_session");
+    assert.equal(state.reservation_runtime.session_id, beforeSession);
+    assert.deepEqual(getExposurePlanAuthorizationRuntime(state).paper_overlay, beforeOverlay);
+
+    clock.advance(sessionTtlMs);
+    jar.advance(sessionTtlMs);
+    const refreshed = await jar.request(`${origin}/api/exposure/operator/session`, {
+      headers: {},
+    });
+    assert.equal(refreshed.status, 401);
+    assert.equal((await refreshed.json() as { error: string }).error, "operator_session_expired");
+    assert.equal(jar.hasOperatorCookie(), true);
+
+    const challengeResponse = await jar.request(`${origin}/api/exposure/operator/session/recover`, {
+      headers: {},
+    });
+    assert.equal(challengeResponse.status, 200);
+    const challenge = await challengeResponse.json() as { status: string; recovery_csrf_token: string; recovery_expires_at: string };
+    assert.equal(challenge.status, "recovery_required");
+    assert.match(challenge.recovery_csrf_token, /^recovery_csrf_/);
+    assert.equal(challenge.recovery_expires_at, new Date(NOW.getTime() + sessionTtlMs + recoveryWindowMs).toISOString());
+
+    const resetRejected = await jar.request(`${origin}/api/exposure/operator/session/reset`, {
+      method: "POST",
+      headers: {
+        origin,
+        "content-type": "application/json",
+        "x-sentinel-csrf": session.csrf_token,
+      },
+      body: "{}",
+    });
+    assert.equal(resetRejected.status, 401);
+    assert.equal((await resetRejected.json() as { error: string }).error, "operator_session_expired");
+
+    const cookieFreeJar = new AutomaticCookieJar(NOW);
+    cookieFreeJar.advance(sessionTtlMs);
+    const cookieFreeBootstrap = await cookieFreeJar.request(`${origin}/api/exposure/operator/session`, {
+      headers: {},
+    });
+    assert.equal(cookieFreeBootstrap.status, 401);
+    assert.equal((await cookieFreeBootstrap.json() as { error: string }).error, "operator_session_required");
+    assert.equal(state.reservation_runtime.session_id, beforeSession);
+    assert.deepEqual(getExposurePlanAuthorizationRuntime(state).paper_overlay, beforeOverlay);
+
+    const foreignRecovery = await jar.request(`${origin}/api/exposure/operator/session/recover`, {
+      method: "POST",
+      headers: {
+        origin: "https://attacker.invalid",
+        "content-type": "application/json",
+        "x-sentinel-recovery-csrf": challenge.recovery_csrf_token,
+      },
+      body: JSON.stringify({ disposition: "discard_paper_context" }),
+    });
+    assert.equal(foreignRecovery.status, 403);
+
+    const csrfRejected = await jar.request(`${origin}/api/exposure/operator/session/recover`, {
+      method: "POST",
+      headers: {
+        origin,
+        "content-type": "application/json",
+        "x-sentinel-recovery-csrf": "wrong-recovery-csrf",
+      },
+      body: JSON.stringify({ disposition: "discard_paper_context" }),
+    });
+    assert.equal(csrfRejected.status, 403);
+    assert.equal(state.reservation_runtime.session_id, beforeSession);
+    assert.deepEqual(getExposurePlanAuthorizationRuntime(state).paper_overlay, beforeOverlay);
+
+    const recoveryResponse = await jar.request(`${origin}/api/exposure/operator/session/recover`, {
+      method: "POST",
+      headers: {
+        origin,
+        "content-type": "application/json",
+        "x-sentinel-recovery-csrf": challenge.recovery_csrf_token,
+      },
+      body: JSON.stringify({ disposition: "discard_paper_context" }),
+    });
+    assert.equal(recoveryResponse.status, 200);
+    const recovered = await recoveryResponse.json() as { session_id: string };
+    assert.notEqual(recovered.session_id, beforeSession);
+    assert.equal(getExposurePlanAuthorizationRuntime(state).paper_overlay, null);
+    assert.equal(jar.hasOperatorCookie(), true);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
+test("automatic cookie expiration closes the bounded recovery window without deleting paper context", async () => {
+  const clock = controlledClock();
+  const sessionTtlMs = 60_000;
+  const recoveryWindowMs = 30_000;
+  const state = createExposureRuntimeState({ reservation: { reservation_ttl_ms: 600_000 } });
+  const reference = await fixtureReference(state);
+  const port = 18789;
+  const origin = `http://127.0.0.1:${port}`;
+  const server = createJudgeModeServer({
+    operatorBoundary: {
+      allowed_origin: origin,
+      allowed_host: `127.0.0.1:${port}`,
+      clock: clock.now,
+      session_ttl_ms: sessionTtlMs,
+      recovery_window_ms: recoveryWindowMs,
+    },
+    exposureDependencies: { runtimeState: state, now: NOW },
+    planRefresh: refreshFor(state, reference),
+  });
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(port, "127.0.0.1", () => resolve());
+  });
+
+  const jar = new AutomaticCookieJar();
+  try {
+    const sessionResponse = await jar.request(`${origin}/api/exposure/operator/session`, { headers: {} });
+    assert.equal(sessionResponse.status, 200);
+    const session = await sessionResponse.json() as Record<string, string>;
+    const acceptedResponse = await jar.request(`${origin}/api/exposure/plan/accept`, {
+      method: "POST",
+      headers: { origin, "content-type": "application/json", "x-sentinel-csrf": session.csrf_token },
+      body: JSON.stringify({ evaluation_ref: reference, plan: PLAN, idempotency_key: "automatic-cookie-window", accept_partial: false }),
+    });
+    assert.equal(acceptedResponse.status, 200);
+    const accepted = await acceptedResponse.json() as { reservation: { reservation_id: string } };
+    const permitResponse = await jar.request(`${origin}/api/exposure/plan/permit`, {
+      method: "POST",
+      headers: { origin, "content-type": "application/json", "x-sentinel-csrf": session.csrf_token },
+      body: JSON.stringify({ reservation_id: accepted.reservation.reservation_id, session_id: session.session_id, mode: "live" }),
+    });
+    assert.equal(permitResponse.status, 200);
+    const permit = await permitResponse.json() as { permit: unknown };
+    const executedResponse = await jar.request(`${origin}/api/exposure/reservation/execute`, {
+      method: "POST",
+      headers: { origin, "content-type": "application/json", "x-sentinel-csrf": session.csrf_token },
+      body: JSON.stringify({ reservation_id: accepted.reservation.reservation_id, permit: permit.permit, session_id: session.session_id, mode: "live" }),
+    });
+    assert.equal(executedResponse.status, 200);
+    assert.equal((await executedResponse.json() as { code: string }).code, "PAPER_EXECUTED");
+    const beforeSession = state.reservation_runtime.session_id;
+    const beforeOverlay = structuredClone(getExposurePlanAuthorizationRuntime(state).paper_overlay);
+
+    clock.advance(sessionTtlMs + recoveryWindowMs - 1_000);
+    jar.advance(sessionTtlMs + recoveryWindowMs - 1_000);
+    const nearBoundary = await jar.request(`${origin}/api/exposure/operator/session/recover`, { headers: {} });
+    assert.equal(nearBoundary.status, 200);
+    assert.equal((await nearBoundary.json() as { status: string }).status, "recovery_required");
+    assert.equal(jar.hasOperatorCookie(), true);
+
+    clock.advance(1_000);
+    const serverExpiredWindow = await jar.request(`${origin}/api/exposure/operator/session/recover`, { headers: {} });
+    assert.equal(serverExpiredWindow.status, 401);
+    assert.equal((await serverExpiredWindow.json() as { error: string }).error, "operator_recovery_window_expired");
+    assert.equal(state.reservation_runtime.session_id, beforeSession);
+    assert.deepEqual(getExposurePlanAuthorizationRuntime(state).paper_overlay, beforeOverlay);
+
+    jar.advance(1_000);
+    assert.equal(jar.hasOperatorCookie(), false);
+    const expiredWindow = await jar.request(`${origin}/api/exposure/operator/session/recover`, { headers: {} });
+    assert.equal(expiredWindow.status, 401);
+    assert.equal((await expiredWindow.json() as { error: string }).error, "operator_session_required");
+    assert.equal(state.reservation_runtime.session_id, beforeSession);
+    assert.deepEqual(getExposurePlanAuthorizationRuntime(state).paper_overlay, beforeOverlay);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
 });
 
 test("the real local HTTP server preserves the cookie and CSRF boundary", async () => {
