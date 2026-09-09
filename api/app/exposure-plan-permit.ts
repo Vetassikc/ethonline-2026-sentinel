@@ -1,6 +1,7 @@
 import { TypedDataEncoder, verifyTypedData } from "ethers";
 
 import type { ExposureAgentId } from "../../shared/schemas/exposure-plan.ts";
+import type { ExposureSourceProvenance } from "./exposure-plan-engine.ts";
 import {
   getDemoExposureSignerAddress,
   isTrustedDemoExposureSigner,
@@ -34,6 +35,7 @@ const EXPOSURE_PLAN_PERMIT_FIELDS: Array<{ name: string; type: string }> = [
   { name: "reservationId", type: "string" },
   { name: "sessionId", type: "string" },
   { name: "mode", type: "string" },
+  { name: "sourceProvenance", type: "string" },
   { name: "runtimeGeneration", type: "string" },
   { name: "issuedAt", type: "uint256" },
   { name: "expiresAt", type: "uint256" },
@@ -52,6 +54,7 @@ export type ExposurePlanPermitPayload = {
   reservation_id: string;
   session_id: string;
   mode: "live" | "what_if";
+  source_provenance: ExposureSourceProvenance;
   runtime_generation: string;
   issued_at: number;
   expires_at: number;
@@ -134,6 +137,7 @@ function buildMessage(payload: ExposurePlanPermitPayload): Record<string, string
     reservationId: payload.reservation_id,
     sessionId: payload.session_id,
     mode: payload.mode,
+    sourceProvenance: payload.source_provenance,
     runtimeGeneration: payload.runtime_generation,
     issuedAt: String(payload.issued_at),
     expiresAt: String(payload.expires_at),
@@ -170,6 +174,7 @@ function validPayload(payload: ExposurePlanPermitPayload): boolean {
     && typeof payload.reservation_id === "string"
     && typeof payload.session_id === "string"
     && typeof payload.mode === "string"
+    && typeof payload.source_provenance === "string"
     && typeof payload.runtime_generation === "string"
     && typeof payload.audience === "string"
     && payload.schema_version === "sentinel-exposure-plan-permit.v1"
@@ -183,6 +188,10 @@ function validPayload(payload: ExposurePlanPermitPayload): boolean {
     && OPAQUE_ID_PATTERN.test(payload.reservation_id)
     && OPAQUE_ID_PATTERN.test(payload.session_id)
     && (payload.mode === "live" || payload.mode === "what_if")
+    && (payload.source_provenance === "LIVE_SOURCE"
+      || payload.source_provenance === "FIXTURE"
+      || payload.source_provenance === "REPLAY"
+      || payload.source_provenance === "MODELED")
     && OPAQUE_ID_PATTERN.test(payload.runtime_generation)
     && Number.isSafeInteger(payload.issued_at)
     && Number.isSafeInteger(payload.expires_at)
@@ -219,6 +228,7 @@ export function issueExposurePlanPermit(
     reservation_id: input.reservation_id,
     session_id: input.session_id,
     mode: input.mode,
+    source_provenance: input.source_provenance,
     runtime_generation: input.runtime_generation,
     issued_at: issuedAt,
     expires_at: expiresAt,
@@ -274,7 +284,7 @@ export function validateSignedExposurePlanPermit(input: unknown):
     return { ok: false, details: ["permit_fields"] };
   }
   const payload = input.payload;
-  if (!exactKeys(payload, ["schema_version", "plan_hash", "agent_id", "account", "policy_version", "evidence_ref", "graph_hash", "reservation_id", "session_id", "mode", "runtime_generation", "issued_at", "expires_at", "nonce", "audience"])) {
+  if (!exactKeys(payload, ["schema_version", "plan_hash", "agent_id", "account", "policy_version", "evidence_ref", "graph_hash", "reservation_id", "session_id", "mode", "source_provenance", "runtime_generation", "issued_at", "expires_at", "nonce", "audience"])) {
     return { ok: false, details: ["payload_keys"] };
   }
   const typedData = input.typed_data;

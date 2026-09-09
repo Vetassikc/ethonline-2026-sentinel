@@ -75,12 +75,26 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
-async function establish(state = createExposureRuntimeState()) {
+function controlledClock(start = NOW) {
+  let currentMs = start.getTime();
+  return {
+    now: () => new Date(currentMs),
+    advance: (milliseconds: number) => { currentMs += milliseconds; },
+  };
+}
+
+async function establish(
+  state = createExposureRuntimeState(),
+  options: { boundary?: Record<string, unknown> } = {},
+) {
   const session = await handleJudgeModeRequest(
     "GET",
     "/api/exposure/operator/session",
     "",
-    { exposureDependencies: { runtimeState: state, now: NOW } },
+    {
+      exposureDependencies: { runtimeState: state, now: NOW },
+      operatorBoundary: options.boundary as any,
+    },
     { headers: { host: HOST } },
   );
   assert.equal(session.statusCode, 200);
@@ -180,11 +194,14 @@ test("plan permit is cryptographically plan-bound and verification stays separat
     session_id: "session_demo",
     mode: "live",
     runtime_generation: "generation_demo",
+    source_provenance: "FIXTURE",
     now: NOW,
     nonce: "7",
-  });
+  } as any);
   assert.equal(issued.status, "issued");
   if (issued.status !== "issued") throw new Error("expected plan permit");
+
+  assert.equal(issued.permit.payload.source_provenance, "FIXTURE");
 
   const verified = verifyExposurePlanPermit({ permit: issued.permit, now: NOW });
   assert.equal(verified.cryptographically_valid, true);
@@ -541,6 +558,189 @@ test("a source block/hash refresh alone does not invalidate unchanged policy qua
   );
 });
 
+test("reservation expiry is rechecked after an awaited refresh and releases exactly once", async () => {
+  const clock = controlledClock();
+  const state = createExposureRuntimeState({ reservation: { reservation_ttl_ms: 60_000 } });
+  const reference = await fixtureReference(state);
+  const established = await establish(state, { boundary: { clock: clock.now } });
+  const accepted = await acceptAndIssuePermit(state, reference, established, PLAN, "expiry-during-refresh");
+  const pending = deferred<ExposurePlanRefreshResult>();
+  const execution = executeExposurePlanReservation(
+    state,
+    {
+      reservation_id: accepted.reservationId,
+      permit: accepted.permit as any,
+      session_id: established.payload.session_id,
+      mode: "live",
+      now: NOW,
+      clock: clock.now,
+      operator_session: established.payload,
+    } as any,
+    () => pending.promise,
+  );
+
+  clock.advance(60_000);
+  pending.resolve({ status: "ok", snapshot: snapshotFor(state, reference) });
+  const result = await execution;
+  assert.equal(result.code, "RESERVATION_EXPIRED");
+  const view = getExposureReservationExecutionView(state.reservation_runtime, accepted.reservationId);
+  assert.equal(view?.reservation.state, "expired");
+  const releaseEvent = view?.reservation.capacity_release_event_id;
+  assert.ok(releaseEvent);
+  assert.equal(getExposurePlanAuthorizationRuntime(state).paper_overlay, null);
+  assert.equal(getExposurePlanAuthorizationRuntime(state).consumed_nonces.size, 0);
+  assert.equal(getExposureReservationCapacity(state.reservation_runtime).active_reservation_count, 0);
+
+  const repeated = getExposureReservationExecutionView(state.reservation_runtime, accepted.reservationId);
+  assert.equal(repeated?.reservation.capacity_release_event_id, releaseEvent);
+});
+
+test("the execute route uses its server-owned clock after refresh", async () => {
+  const clock = controlledClock();
+  const state = createExposureRuntimeState({ reservation: { reservation_ttl_ms: 60_000 } });
+  const reference = await fixtureReference(state);
+  const established = await establish(state, { boundary: { clock: clock.now } });
+  const accepted = await acceptAndIssuePermit(state, reference, established, PLAN, "route-expiry-during-refresh");
+  const pending = deferred<ExposurePlanRefreshResult>();
+  const execution = handleJudgeModeRequest(
+    "POST",
+    "/api/exposure/reservation/execute",
+    JSON.stringify({ reservation_id: accepted.reservationId, permit: accepted.permit, session_id: established.payload.session_id, mode: "live" }),
+    {
+      exposureDependencies: { runtimeState: state, now: NOW },
+      operatorBoundary: { clock: clock.now },
+      planRefresh: () => pending.promise,
+    },
+    established.headers,
+  );
+  clock.advance(60_000);
+  pending.resolve({ status: "ok", snapshot: snapshotFor(state, reference) });
+  const response = await execution;
+  assert.equal(response.statusCode, 409);
+  assert.equal((response.payload as { code: string }).code, "RESERVATION_EXPIRED");
+  assert.equal(getExposurePlanAuthorizationRuntime(state).paper_overlay, null);
+  assert.equal(getExposurePlanAuthorizationRuntime(state).consumed_nonces.size, 0);
+});
+
+test("permit expiry is rechecked after refresh without expiring a longer reservation", async () => {
+  const clock = controlledClock();
+  const state = createExposureRuntimeState({ reservation: { reservation_ttl_ms: 600_000 } });
+  const reference = await fixtureReference(state);
+  const established = await establish(state, { boundary: { clock: clock.now, session_ttl_ms: 600_000 } });
+  const accepted = await acceptAndIssuePermit(state, reference, established, PLAN, "permit-expiry-during-refresh");
+  const pending = deferred<ExposurePlanRefreshResult>();
+  const execution = executeExposurePlanReservation(
+    state,
+    {
+      reservation_id: accepted.reservationId,
+      permit: accepted.permit as any,
+      session_id: established.payload.session_id,
+      mode: "live",
+      now: NOW,
+      clock: clock.now,
+      operator_session: established.payload,
+    } as any,
+    () => pending.promise,
+  );
+
+  clock.advance(301_000);
+  pending.resolve({ status: "ok", snapshot: snapshotFor(state, reference) });
+  const result = await execution;
+  assert.equal(result.code, "PERMIT_EXPIRED");
+  assert.equal(getExposureReservationExecutionView(state.reservation_runtime, accepted.reservationId)?.reservation.state, "accepted_reserved");
+  assert.equal(getExposurePlanAuthorizationRuntime(state).paper_overlay, null);
+  assert.equal(getExposurePlanAuthorizationRuntime(state).consumed_nonces.size, 0);
+});
+
+test("operator-session expiry is rechecked after refresh without execution side effects", async () => {
+  const clock = controlledClock();
+  const state = createExposureRuntimeState({ reservation: { reservation_ttl_ms: 600_000 } });
+  const reference = await fixtureReference(state);
+  const established = await establish(state, { boundary: { clock: clock.now, session_ttl_ms: 60_000 } });
+  const accepted = await acceptAndIssuePermit(state, reference, established, PLAN, "operator-expiry-during-refresh");
+  const pending = deferred<ExposurePlanRefreshResult>();
+  const execution = executeExposurePlanReservation(
+    state,
+    {
+      reservation_id: accepted.reservationId,
+      permit: accepted.permit as any,
+      session_id: established.payload.session_id,
+      mode: "live",
+      now: NOW,
+      clock: clock.now,
+      operator_session: established.payload,
+    } as any,
+    () => pending.promise,
+  );
+
+  clock.advance(60_000);
+  pending.resolve({ status: "ok", snapshot: snapshotFor(state, reference) });
+  const result = await execution;
+  assert.equal(result.code, "OPERATOR_SESSION_EXPIRED");
+  assert.equal(getExposureReservationExecutionView(state.reservation_runtime, accepted.reservationId)?.reservation.state, "accepted_reserved");
+  assert.equal(getExposurePlanAuthorizationRuntime(state).paper_overlay, null);
+  assert.equal(getExposurePlanAuthorizationRuntime(state).consumed_nonces.size, 0);
+});
+
+test("fixture provenance cannot silently execute against a live refresh", async () => {
+  const state = createExposureRuntimeState();
+  const reference = await fixtureReference(state);
+  const established = await establish(state);
+  const accepted = await acceptAndIssuePermit(state, reference, established, PLAN, "fixture-live-provenance");
+  const result = await executeExposurePlanReservation(
+    state,
+    {
+      reservation_id: accepted.reservationId,
+      permit: accepted.permit as any,
+      session_id: established.payload.session_id,
+      mode: "live",
+      now: NOW,
+    },
+    async () => ({
+      status: "ok",
+      snapshot: snapshotFor(state, reference, { source: { provenance: "LIVE_SOURCE" } } as any),
+    }),
+  );
+  assert.equal(result.code, "SOURCE_PROVENANCE_MISMATCH");
+  assert.equal(getExposureReservationExecutionView(state.reservation_runtime, accepted.reservationId)?.reservation.state, "accepted_reserved");
+  assert.equal(getExposurePlanAuthorizationRuntime(state).paper_overlay, null);
+  assert.equal(getExposurePlanAuthorizationRuntime(state).consumed_nonces.size, 0);
+});
+
+test("live provenance cannot silently execute against a fixture refresh", async () => {
+  const state = createExposureRuntimeState();
+  const reference = await fixtureReference(state);
+  const stored = state.evaluations.get(reference);
+  assert.ok(stored);
+  const graph = stored!.evaluation.graph;
+  assert.ok(graph);
+  stored!.evaluation = {
+    ...stored!.evaluation,
+    mode: "live",
+    graph: { ...graph!, mode: "live" },
+  };
+  const established = await establish(state);
+  const accepted = await acceptAndIssuePermit(state, reference, established, PLAN, "live-fixture-provenance");
+  const result = await executeExposurePlanReservation(
+    state,
+    {
+      reservation_id: accepted.reservationId,
+      permit: accepted.permit as any,
+      session_id: established.payload.session_id,
+      mode: "live",
+      now: NOW,
+    },
+    async () => ({
+      status: "ok",
+      snapshot: snapshotFor(state, reference, { source: { provenance: "FIXTURE" } } as any),
+    }),
+  );
+  assert.equal(result.code, "SOURCE_PROVENANCE_MISMATCH");
+  assert.equal(getExposureReservationExecutionView(state.reservation_runtime, accepted.reservationId)?.reservation.state, "accepted_reserved");
+  assert.equal(getExposurePlanAuthorizationRuntime(state).paper_overlay, null);
+  assert.equal(getExposurePlanAuthorizationRuntime(state).consumed_nonces.size, 0);
+});
+
 test("expired permits and restarted runtime generations cannot execute", async () => {
   const expiredState = createExposureRuntimeState();
   const expiredReference = await fixtureReference(expiredState);
@@ -625,6 +825,7 @@ test("what-if permits are rejected at the execution boundary without overlay or 
     reservation_id: "reservation_simulation",
     session_id: established.payload.session_id,
     mode: "what_if",
+    source_provenance: "FIXTURE",
     runtime_generation: established.payload.runtime_generation,
     now: NOW,
     nonce: "99",
@@ -702,7 +903,23 @@ test("source failure or state changes during awaited refresh leave reservation, 
 test("old operator sessions and runtime generations cannot authorize a current reservation", async () => {
   const state = createExposureRuntimeState();
   const first = await establish(state);
-  const second = await establish(state);
+  const reset = await handleJudgeModeRequest(
+    "POST",
+    "/api/exposure/operator/session/reset",
+    "{}",
+    { exposureDependencies: { runtimeState: state, now: NOW } },
+    first.headers,
+  );
+  assert.equal(reset.statusCode, 200);
+  const resetCookie = reset.headers?.["set-cookie"];
+  assert.ok(resetCookie);
+  const resetCookieValue = Array.isArray(resetCookie) ? resetCookie[0] : resetCookie;
+  const second = {
+    state,
+    payload: reset.payload as Record<string, string>,
+    cookie: resetCookieValue.split(";", 1)[0],
+    headers: context(resetCookieValue.split(";", 1)[0], (reset.payload as Record<string, string>).csrf_token),
+  };
   assert.notEqual(first.payload.session_id, second.payload.session_id);
 
   const reference = await fixtureReference(state);
@@ -723,6 +940,144 @@ test("old operator sessions and runtime generations cannot authorize a current r
     second.headers,
   );
   assert.equal(current.statusCode, 200);
+});
+
+test("foreign-origin and cross-site bootstrap requests cannot rotate an active operator context", async () => {
+  const state = createExposureRuntimeState();
+  const established = await establish(state);
+  const reference = await fixtureReference(state);
+  const accepted = await handleJudgeModeRequest(
+    "POST",
+    "/api/exposure/plan/accept",
+    JSON.stringify({ evaluation_ref: reference, plan: PLAN, idempotency_key: "bootstrap-boundary", accept_partial: false }),
+    { exposureDependencies: { runtimeState: state, now: NOW } },
+    established.headers,
+  );
+  assert.equal(accepted.statusCode, 200);
+  const beforeSession = state.reservation_runtime.session_id;
+
+  const foreignOrigin = await handleJudgeModeRequest(
+    "GET",
+    "/api/exposure/operator/session",
+    "",
+    { exposureDependencies: { runtimeState: state, now: NOW } },
+    { headers: { host: HOST, origin: "https://attacker.invalid" } },
+  );
+  assert.equal(foreignOrigin.statusCode, 403);
+  assert.equal(state.reservation_runtime.session_id, beforeSession);
+  assert.equal(getExposureReservationExecutionView(state.reservation_runtime, (accepted.payload as any).reservation.reservation_id)?.reservation.state, "accepted_reserved");
+
+  const crossSite = await handleJudgeModeRequest(
+    "GET",
+    "/api/exposure/operator/session",
+    "",
+    { exposureDependencies: { runtimeState: state, now: NOW } },
+    { headers: { host: HOST, origin: ORIGIN, "sec-fetch-site": "cross-site" } },
+  );
+  assert.equal(crossSite.statusCode, 403);
+  assert.equal(state.reservation_runtime.session_id, beforeSession);
+  assert.equal(getExposureReservationExecutionView(state.reservation_runtime, (accepted.payload as any).reservation.reservation_id)?.reservation.state, "accepted_reserved");
+});
+
+test("rejected bootstrap preserves an existing paper overlay", async () => {
+  const state = createExposureRuntimeState();
+  const reference = await fixtureReference(state);
+  const established = await establish(state);
+  const accepted = await acceptAndIssuePermit(state, reference, established, PLAN, "bootstrap-overlay");
+  const executed = await handleJudgeModeRequest(
+    "POST",
+    "/api/exposure/reservation/execute",
+    JSON.stringify({ reservation_id: accepted.reservationId, permit: accepted.permit, session_id: established.payload.session_id, mode: "live" }),
+    { exposureDependencies: { runtimeState: state, now: NOW }, planRefresh: refreshFor(state, reference) },
+    established.headers,
+  );
+  assert.equal(executed.statusCode, 200);
+  const before = structuredClone(getExposurePlanAuthorizationRuntime(state).paper_overlay);
+  const rejected = await handleJudgeModeRequest(
+    "GET",
+    "/api/exposure/operator/session",
+    "",
+    { exposureDependencies: { runtimeState: state, now: NOW } },
+    { headers: { host: HOST, origin: "https://attacker.invalid" } },
+  );
+  assert.equal(rejected.statusCode, 403);
+  assert.equal(state.reservation_runtime.session_id, established.payload.session_id);
+  assert.deepEqual(getExposurePlanAuthorizationRuntime(state).paper_overlay, before);
+});
+
+test("missing and stale cookies cannot bootstrap over an active session, while valid reuse is read-only", async () => {
+  const state = createExposureRuntimeState();
+  const established = await establish(state);
+  const beforeSession = state.reservation_runtime.session_id;
+  const missingCookie = await handleJudgeModeRequest(
+    "GET",
+    "/api/exposure/operator/session",
+    "",
+    { exposureDependencies: { runtimeState: state, now: NOW } },
+    { headers: { host: HOST, origin: ORIGIN } },
+  );
+  assert.equal(missingCookie.statusCode, 401);
+  assert.equal(state.reservation_runtime.session_id, beforeSession);
+
+  const staleCookie = await handleJudgeModeRequest(
+    "GET",
+    "/api/exposure/operator/session",
+    "",
+    { exposureDependencies: { runtimeState: state, now: NOW } },
+    { headers: { host: HOST, origin: ORIGIN, cookie: "sentinel_operator_session=stale" } },
+  );
+  assert.equal(staleCookie.statusCode, 401);
+  assert.equal(state.reservation_runtime.session_id, beforeSession);
+
+  const reused = await handleJudgeModeRequest(
+    "GET",
+    "/api/exposure/operator/session",
+    "",
+    { exposureDependencies: { runtimeState: state, now: NOW } },
+    established.headers,
+  );
+  assert.equal(reused.statusCode, 200);
+  assert.equal((reused.payload as Record<string, string>).session_id, established.payload.session_id);
+  assert.equal(reused.headers?.["set-cookie"], undefined);
+  assert.equal(state.reservation_runtime.session_id, beforeSession);
+});
+
+test("initial bootstrap is allowed without CSRF, but explicit reset requires the operator boundary", async () => {
+  const initial = await establish();
+  assert.equal(initial.payload.mode, "live");
+
+  const state = initial.state;
+  const reference = await fixtureReference(state);
+  const accepted = await handleJudgeModeRequest(
+    "POST",
+    "/api/exposure/plan/accept",
+    JSON.stringify({ evaluation_ref: reference, plan: PLAN, idempotency_key: "explicit-reset", accept_partial: false }),
+    { exposureDependencies: { runtimeState: state, now: NOW } },
+    initial.headers,
+  );
+  assert.equal(accepted.statusCode, 200);
+  const oldSessionId = initial.payload.session_id;
+
+  const reset = await handleJudgeModeRequest(
+    "POST",
+    "/api/exposure/operator/session/reset",
+    "{}",
+    { exposureDependencies: { runtimeState: state, now: NOW } },
+    initial.headers,
+  );
+  assert.equal(reset.statusCode, 200);
+  assert.notEqual((reset.payload as Record<string, string>).session_id, oldSessionId);
+  assert.ok(reset.headers?.["set-cookie"]);
+  assert.equal(getExposureReservationExecutionView(state.reservation_runtime, (accepted.payload as any).reservation.reservation_id)?.reservation.state, "invalidated");
+
+  const oldSessionMutation = await handleJudgeModeRequest(
+    "POST",
+    "/api/exposure/plan/accept",
+    JSON.stringify({ evaluation_ref: reference, plan: PLAN, idempotency_key: "old-session-after-reset", accept_partial: false }),
+    { exposureDependencies: { runtimeState: state, now: NOW } },
+    initial.headers,
+  );
+  assert.equal(oldSessionMutation.statusCode, 403);
 });
 
 test("the real local HTTP server preserves the cookie and CSRF boundary", async () => {

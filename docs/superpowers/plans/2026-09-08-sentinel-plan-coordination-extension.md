@@ -490,7 +490,7 @@ Use one transition function with a release event ID. `paper_executed` applies th
 
 - [x] **Step 4: Add plan-bound EIP-712 permit and restart boundary.**
 
-Implement sentinel-exposure-plan-permit.v1 with fields from the design spec. The payload must include exact plan hash, agent, evidence ref, graph hash, reservation, runtime generation, session ID, explicit `mode: "live" | "what_if"`, expiry, nonce and fixed audience. Verification is pure. Execution rejects `mode: "what_if"` with `SIMULATION_NOT_EXECUTABLE`, rejects old generation with `RUNTIME_RESTART_INVALIDATED`, keeps the signature cryptographically separate from current executable status, and consumes nonce only after fresh conditions and reservation state pass.
+Implement sentinel-exposure-plan-permit.v1 with fields from the design spec. The payload must include exact plan hash, agent, evidence ref, graph hash, reservation, independent source provenance, runtime generation, session ID, explicit `mode: "live" | "what_if"`, expiry, nonce and fixed audience. Verification is pure. Execution rejects `mode: "what_if"` with `SIMULATION_NOT_EXECUTABLE`, rejects old generation with `RUNTIME_RESTART_INVALIDATED`, keeps the signature cryptographically separate from current executable status, and consumes nonce only after fresh conditions, reservation state, session validity and provenance pass.
 
 - [x] **Step 5: Add routes and run focused regression.**
 
@@ -498,6 +498,7 @@ Add the session and exact-body routes:
 
 ~~~text
 GET  /api/exposure/operator/session
+POST /api/exposure/operator/session/reset
 POST /api/exposure/plan/accept
 POST /api/exposure/reservation/execute
 POST /api/exposure/reservation/cancel
@@ -511,6 +512,7 @@ are exactly:
 
 ~~~json
 {"evaluation_ref":"exposure_<32 hex>","plan":<ExposurePlanV1>,"idempotency_key":"<opaque client key>","accept_partial":false}
+{}
 {"reservation_id":"<server id>","permit":"<plan permit>","session_id":"<server session id>","mode":"live"}
 {"reservation_id":"<server id>","reason":"operator_cancel"}
 {"reservation_id":"<server id>","session_id":"<server session id>","mode":"live"}
@@ -548,6 +550,38 @@ paper execution. No wallet transaction or paid external provider/model
 request occurred.
 
 Implemented commit: `22e405f` — `feat: add plan-bound authorization and paper execution`.
+
+## Task 4B correction checkpoint: expiry, provenance and bootstrap boundary
+
+The bounded correction preserved the Task 4B paper-only scope and added no
+Task 5 behavior.
+
+- [x] Write RED regressions with deferred refreshes and a controlled clock for
+  reservation-only expiry, permit expiry and operator-session expiry. The
+  server-owned clock is read again after refresh and immediately before the
+  synchronous commit. At `now_ms >= expires_at_ms`, reservation/session expiry
+  rejects without overlay or nonce mutation; permit validity retains the
+  existing integer-second boundary (`now_seconds <= expires_at`) and expires
+  on the next second. Release remains a single idempotent lifecycle transition.
+- [x] Bind `source_provenance` through reservation records, EIP-712 plan
+  permits, the accepted operator-session context and paper overlays. Both
+  `FIXTURE -> LIVE_SOURCE` and `LIVE_SOURCE -> FIXTURE` transitions reject as
+  `SOURCE_PROVENANCE_MISMATCH`; unrelated block/hash changes within one
+  provenance remain accepted. What-if remains rejected at the original
+  execution boundary.
+- [x] Make operator session inspection/bootstrap non-destructive. Foreign
+  `Origin`, cross-site Fetch Metadata, missing/stale cookies over an active
+  context and stale sessions reject before mutation. First local bootstrap
+  remains CSRF-free; explicit rotation is a same-origin, cookie-and-CSRF
+  protected `POST /api/exposure/operator/session/reset` and invalidates the
+  old context deliberately.
+- [x] Focused Task 4B correction checks pass `25/25`; full `npm test` passes
+  `263/263`; Node syntax checks and `git diff --check` pass. The tests include
+  actual route execution, bootstrap/reset boundaries, deferred refresh races,
+  overlay preservation and exact no-side-effect rejection assertions.
+
+The correction remains process-local paper execution, not durable authorization,
+wallet execution, production session security or Task 5 runtime what-if.
 
 ## Task 5: Add dependency-impact propagation and the what-if experience
 

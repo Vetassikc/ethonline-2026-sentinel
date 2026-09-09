@@ -4,8 +4,9 @@
 
 - The public repository is isolated on `ethonline-2026/position-evidence`; the
   historical upstream tree was not rewritten. The reviewed Task 3/Task 4A
-  baseline is published as commit `aa95f40` and the verified Task 4B
-  checkpoint as `22e405f` on the explicit `ethonline` remote.
+  baseline is published as commit `aa95f40`; the Task 4B baseline is published
+  as `4e67771` on the explicit `ethonline` remote. This correction checkpoint
+  is limited to expiry, provenance and bootstrap boundaries and is not Task 5.
 - The configured The Graph source passed a read-only `_meta` preflight with
   fresh indexed metadata and no indexing errors during the recorded check.
 - A bounded live account query returned a complete page containing the
@@ -47,9 +48,9 @@
   by their own eligible stored evaluation.
 - Task 1/2 exact plan validation, accounting, diagnostic projection and repair
   checks remain green. The Task 3/Task 4A correction checks remain `39/39`,
-  the Task 4B focused checks pass `15/15`, and `npm test` passes `253` tests
-  with zero failures, skips or todos; JavaScript syntax and `git diff --check`
-  pass.
+  the Task 4B focused correction checks pass `25/25`, and `npm test` passes
+  `263` tests with zero failures, skips or todos; JavaScript syntax and
+  `git diff --check` pass.
 - The smallest external-client path is implemented locally as a native-fetch
   provider-selectable Responses wrapper around `sentinel_exposure_graph`; the
   focused provider tests pass `6/6`. It is bounded to two AI requests, one
@@ -188,7 +189,8 @@
   authority remains server-owned.
 - `sentinel-exposure-plan-permit.v1` binds the exact plan hash, agent, server
   account, policy, evidence reference, graph hash, reservation, session,
-  runtime generation, mode, expiry, nonce and fixed audience. Cryptographic
+  independent source provenance, runtime generation, mode, expiry, nonce and
+  fixed audience. Cryptographic
   validity is reported separately from current execution eligibility, which
   remains `UNVERIFIED_UNTIL_FRESH_RECHECK` until the execution boundary passes.
 - A bounded controlled-source lifecycle passed: operator session → accepted
@@ -205,6 +207,37 @@
 - Task 4B remains process-local and in-memory. Restart invalidates generation-
   bound state; no Task 5 runtime what-if, reservation UI or external planner
   integration is included.
+
+## FACT — Task 4B correction checkpoint
+
+- RED regressions reproduced the three reported defects: a stale pre-refresh
+  timestamp allowed `PAPER_EXECUTED` after reservation/permit/session expiry;
+  a same-quantity FIXTURE acceptance could be relabeled by a LIVE_SOURCE
+  refresh; and a foreign-origin or no-cookie session GET could rotate the
+  active context and invalidate state.
+- GREEN behavior reads a server-owned injectable clock again after the awaited
+  refresh. At `now_ms >= expires_at_ms`, reservation and operator session
+  expiry reject; a permit is valid through its integer-second `expires_at` and
+  expires at the next second. Reservation expiry returns
+  `RESERVATION_EXPIRED`, releases capacity once and preserves the absence of
+  overlay/nonce side effects. Permit/session expiry preserve the active
+  reservation and also produce no overlay or nonce.
+- `source_provenance` is now carried by reservation records and the signed plan
+  permit, and checked against the accepted session and paper overlay. Both
+  `FIXTURE -> LIVE_SOURCE` and `LIVE_SOURCE -> FIXTURE` return
+  `SOURCE_PROVENANCE_MISMATCH`; an unrelated block/hash change within one
+  provenance still executes in the controlled paper path. The separate
+  what-if path remains `SIMULATION_NOT_EXECUTABLE`.
+- GET `/api/exposure/operator/session` now rejects foreign `Origin`,
+  cross-site Fetch Metadata, missing/stale cookies over an active context and
+  stale sessions before mutation. Initial local bootstrap remains available
+  without CSRF. Explicit rotation is a same-origin, cookie-and-CSRF protected
+  `POST /api/exposure/operator/session/reset`; rejected requests preserve the
+  session, active reservation and existing paper overlay.
+- Focused `api/tests/exposure-plan-permit.test.ts` passes `25/25`; the full
+  suite passes `263/263`; Node syntax checks and `git diff --check` pass. This
+  is process-local paper authorization only. It does not establish durable
+  authorization, production session security, wallet execution or Task 5.
 
 ## FACT — bounded diagnosis and live paper gate
 

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import type { ExposureEvaluation, ExposureMode } from "../../shared/schemas/exposure-graph.ts";
 import type { ExposurePlanV1 } from "../../shared/schemas/exposure-plan.ts";
+import type { ExposureSourceProvenance } from "./exposure-plan-engine.ts";
 import {
   DEFAULT_EXPOSURE_PLAN_POLICY,
   deriveExposurePlanAccountingState,
@@ -47,7 +48,10 @@ export type ExposurePlanOperatorBoundaryConfig = {
   allowed_host?: string;
   session_ttl_ms?: number;
   max_sessions?: number;
+  clock?: ExposureServerClock;
 };
+
+export type ExposureServerClock = () => Date;
 
 export type OperatorRequestHeaders = Record<string, string | string[] | undefined>;
 
@@ -98,6 +102,7 @@ export type ExposurePaperOverlay = {
 export type ExposurePlanAuthorizationRuntime = {
   sessions: Map<string, OperatorSessionRecord>;
   accepted_plans: Map<string, AcceptedPlanRecord>;
+  session_source_provenance: ExposureSourceProvenance | null;
   paper_overlay: ExposurePaperOverlay | null;
   consumed_nonces: Set<string>;
   max_sessions: number;
@@ -113,6 +118,8 @@ export type ExposurePlanExecutionRequest = {
   permit: SignedExposurePlanPermit;
   session_id: string;
   mode: "live" | "what_if";
+  /** Server-owned in HTTP routes; `now` is retained for deterministic internal callers. */
+  clock?: ExposureServerClock;
   now?: Date;
 };
 
@@ -151,6 +158,7 @@ export function getExposurePlanAuthorizationRuntime(
   const runtime: ExposurePlanAuthorizationRuntime = {
     sessions: new Map(),
     accepted_plans: new Map(),
+    session_source_provenance: null,
     paper_overlay: null,
     consumed_nonces: new Set(),
     max_sessions: 16,
@@ -333,6 +341,7 @@ function syncNewSessionContext(
     };
     updateExposureReservationSource(runtime, snapshot);
     authorization.paper_overlay = null;
+    authorization.session_source_provenance = null;
   }
 }
 
@@ -342,6 +351,7 @@ export function createExposurePlanOperatorSession(
     cookie_token?: string;
     now?: Date;
     boundary?: ExposurePlanOperatorBoundaryConfig;
+    force_new?: boolean;
   } = {},
 ): { session: ExposurePlanOperatorSession; cookie: string; set_cookie: string } {
   const now = options.now ?? new Date();
@@ -352,7 +362,7 @@ export function createExposurePlanOperatorSession(
   pruneOperatorSessions(authorization, nowMs);
   const requestedToken = options.cookie_token;
   const existing = requestedToken ? authorization.sessions.get(requestedToken) : undefined;
-  if (existing && existing.expires_at_ms > nowMs
+  if (!options.force_new && existing && existing.expires_at_ms > nowMs
       && existing.runtime_generation === state.reservation_runtime.runtime_generation
       && existing.session_id === state.reservation_runtime.session_id
       && state.reservation_runtime.mode === OPERATOR_SESSION_MODE) {
@@ -384,6 +394,84 @@ export function createExposurePlanOperatorSession(
     cookie: OPERATOR_SESSION_COOKIE_NAME + "=" + cookieToken,
     set_cookie: cookieHeader(cookieToken, ttlMs),
   };
+}
+
+function sessionRecordForId(
+  authorization: ExposurePlanAuthorizationRuntime,
+  sessionId: string,
+): OperatorSessionRecord | null {
+  for (const record of authorization.sessions.values()) {
+    if (record.session_id === sessionId) return record;
+  }
+  return null;
+}
+
+function activeOperatorContext(
+  state: ExposureRuntimeState,
+  nowMs: number,
+): boolean {
+  const authorization = getExposurePlanAuthorizationRuntime(state);
+  const hasLiveSession = [...authorization.sessions.values()].some((session) => session.expires_at_ms > nowMs);
+  return hasLiveSession
+    || authorization.paper_overlay !== null
+    || getActiveExposureReservationDeltas(runtimeOf(state)).length > 0;
+}
+
+export function authorizeExposureOperatorBootstrap(
+  state: ExposureRuntimeState,
+  headers: OperatorRequestHeaders,
+  options: { now?: Date; boundary?: ExposurePlanOperatorBoundaryConfig } = {},
+): { ok: true; cookie_token: string | null } | { ok: false; statusCode: number; payload: Record<string, unknown> } {
+  const now = options.now ?? new Date();
+  const nowMs = now.getTime();
+  const config = options.boundary ?? {};
+  if (!isExposureOperatorHostAllowed(headers, config)) {
+    return { ok: false, statusCode: 403, payload: { error: "operator_host_rejected" } };
+  }
+  const origin = headerValue(headers, "origin");
+  if (origin !== null && origin !== boundaryOrigin(config)) {
+    return { ok: false, statusCode: 403, payload: { error: "operator_origin_rejected" } };
+  }
+  const fetchSite = headerValue(headers, "sec-fetch-site")?.toLowerCase();
+  if (fetchSite && !["same-origin", "same-site", "none"].includes(fetchSite)) {
+    return { ok: false, statusCode: 403, payload: { error: "operator_fetch_site_rejected" } };
+  }
+  const token = cookieValue(headers);
+  const authorization = getExposurePlanAuthorizationRuntime(state);
+  if (token) {
+    const session = authorization.sessions.get(token);
+    if (!session) return { ok: false, statusCode: 401, payload: { error: "operator_session_invalid" } };
+    if (session.expires_at_ms <= nowMs) {
+      return { ok: false, statusCode: 401, payload: { error: "operator_session_expired" } };
+    }
+    if (session.session_id !== state.reservation_runtime.session_id
+        || session.runtime_generation !== state.reservation_runtime.runtime_generation
+        || state.reservation_runtime.mode !== OPERATOR_SESSION_MODE) {
+      return { ok: false, statusCode: 403, payload: { error: "operator_session_stale" } };
+    }
+    return { ok: true, cookie_token: token };
+  }
+  if (activeOperatorContext(state, nowMs)) {
+    return { ok: false, statusCode: 401, payload: { error: "operator_session_required" } };
+  }
+  return { ok: true, cookie_token: null };
+}
+
+export function resetExposurePlanOperatorSession(
+  state: ExposureRuntimeState,
+  session: ExposurePlanOperatorSession,
+  options: { now?: Date; boundary?: ExposurePlanOperatorBoundaryConfig } = {},
+): { session: ExposurePlanOperatorSession; cookie: string; set_cookie: string } | null {
+  const authorization = getExposurePlanAuthorizationRuntime(state);
+  const currentToken = [...authorization.sessions.entries()]
+    .find(([, record]) => record.session_id === session.session_id)?.[0];
+  if (!currentToken) return null;
+  return createExposurePlanOperatorSession(state, {
+    cookie_token: currentToken,
+    force_new: true,
+    now: options.now,
+    boundary: options.boundary,
+  });
 }
 
 export function authorizeExposureOperatorMutation(
@@ -521,6 +609,17 @@ export function acceptExposurePlanForOperator(
   if (authorization.paper_overlay && !isSameState(source.state, authorization.paper_overlay.base_state)) {
     return { statusCode: 409, payload: { status: "rejected", code: "PAPER_SESSION_REBASE_REQUIRED" } };
   }
+  if (authorization.session_source_provenance !== null
+      && authorization.session_source_provenance !== source.source.provenance) {
+    return {
+      statusCode: 409,
+      payload: {
+        status: "rejected",
+        code: "SOURCE_PROVENANCE_MISMATCH",
+        details: ["operator_session_provenance_changed"],
+      },
+    };
+  }
   const runtime = state.reservation_runtime;
   if (runtime.account_scope !== "server-owned"
       && ACCOUNT_PATTERN.test(runtime.account_scope)
@@ -572,6 +671,7 @@ export function acceptExposurePlanForOperator(
       accept_partial: request.accept_partial,
     });
   }
+  authorization.session_source_provenance = source.source.provenance;
   return {
     statusCode: 200,
     payload: {
@@ -620,6 +720,9 @@ export function issueExposurePlanPermitForReservation(
   }
   const accepted = acceptedPlanRecord(state, request.reservation_id);
   if (!accepted) return { statusCode: 409, payload: { status: "rejected", code: "RESERVATION_NOT_FOUND" } };
+  if (view.reservation.source_provenance !== accepted.source.provenance) {
+    return { statusCode: 409, payload: { status: "rejected", code: "SOURCE_PROVENANCE_MISMATCH" } };
+  }
   const issued = issueExposurePlanPermit({
     plan_hash: view.reservation.plan_hash,
     agent_id: view.reservation.agent_id,
@@ -630,6 +733,7 @@ export function issueExposurePlanPermitForReservation(
     reservation_id: view.reservation.reservation_id,
     session_id: session.session_id,
     mode: request.mode,
+    source_provenance: view.reservation.source_provenance,
     runtime_generation: session.runtime_generation,
     now,
     nonce: permitNonce(),
@@ -645,6 +749,27 @@ function executionRejected(
   details: string[] = [],
 ): ExposurePlanExecutionResult {
   return { status: "rejected", code, details, permit_hash: permitHash, nonce };
+}
+
+function executionNow(request: ExposurePlanExecutionRequest): Date {
+  return request.clock?.() ?? request.now ?? new Date();
+}
+
+function operatorSessionValidity(
+  state: ExposureRuntimeState,
+  sessionId: string,
+  nowMs: number,
+): "valid" | "expired" | "missing" | "stale" {
+  const runtime = state.reservation_runtime;
+  const record = sessionRecordForId(getExposurePlanAuthorizationRuntime(state), sessionId);
+  if (!record) return "missing";
+  if (record.expires_at_ms <= nowMs) return "expired";
+  if (record.session_id !== runtime.session_id
+      || record.runtime_generation !== runtime.runtime_generation
+      || runtime.mode !== OPERATOR_SESSION_MODE) {
+    return "stale";
+  }
+  return "valid";
 }
 
 function runtimeVersion(state: ExposureRuntimeState, reservationVersion: number, paperRevision: number) {
@@ -685,8 +810,8 @@ export async function executeExposurePlanReservation(
   request: ExposurePlanExecutionRequest,
   refresh: () => Promise<ExposurePlanRefreshResult>,
 ): Promise<ExposurePlanExecutionResult> {
-  const now = request.now ?? new Date();
-  const verification = verifyExposurePlanPermit({ permit: request.permit, now });
+  const initialNow = executionNow(request);
+  const verification = verifyExposurePlanPermit({ permit: request.permit, now: initialNow });
   const permitHash = verification.permit_hash || request.permit.permit_hash || "";
   const nonce = request.permit.payload?.nonce ?? "";
   if (request.mode === "what_if" || request.permit.payload?.mode === "what_if") {
@@ -701,8 +826,11 @@ export async function executeExposurePlanReservation(
   if (request.permit.payload.runtime_generation !== runtime.runtime_generation) {
     return executionRejected(permitHash, nonce, "RUNTIME_RESTART_INVALIDATED");
   }
+  const initialSessionValidity = operatorSessionValidity(state, request.session_id, initialNow.getTime());
+  if (initialSessionValidity === "expired") return executionRejected(permitHash, nonce, "OPERATOR_SESSION_EXPIRED");
+  if (initialSessionValidity !== "valid") return executionRejected(permitHash, nonce, "SESSION_CONTEXT_MISMATCH");
   if (authorization.consumed_nonces.has(nonce)) return executionRejected(permitHash, nonce, "NONCE_ALREADY_USED");
-  const view = getExposureReservationExecutionView(runtimeOf(state), request.reservation_id);
+  let view = getExposureReservationExecutionView(runtimeOf(state), request.reservation_id);
   if (!view) return executionRejected(permitHash, nonce, "RESERVATION_NOT_FOUND");
   if (view.reservation.state !== "accepted_reserved") return executionRejected(permitHash, nonce, "RESERVATION_NOT_ACTIVE");
   const accepted = acceptedPlanRecord(state, request.reservation_id);
@@ -714,6 +842,8 @@ export async function executeExposurePlanReservation(
     || request.permit.payload.policy_version !== view.reservation.policy_version
     || request.permit.payload.evidence_ref !== view.reservation.evidence_ref
     || request.permit.payload.graph_hash !== view.reservation.graph_hash
+    || request.permit.payload.source_provenance !== view.reservation.source_provenance
+    || request.permit.payload.source_provenance !== accepted.source.provenance
   ) {
     return executionRejected(permitHash, nonce, "PERMIT_RESERVATION_BINDING_MISMATCH");
   }
@@ -744,6 +874,27 @@ export async function executeExposurePlanReservation(
       || snapshot.source.chain_id !== accepted.chain_id) {
     return executionRejected(permitHash, nonce, "CURRENT_SUBJECT_MISMATCH");
   }
+  if (snapshot.source.provenance !== accepted.source.provenance
+      || snapshot.source.provenance !== view.reservation.source_provenance
+      || authorization.session_source_provenance !== snapshot.source.provenance
+      || (authorization.paper_overlay !== null
+        && authorization.paper_overlay.base_source.provenance !== snapshot.source.provenance)) {
+    return executionRejected(permitHash, nonce, "SOURCE_PROVENANCE_MISMATCH", ["accepted_source_provenance_changed"]);
+  }
+
+  const commitNow = executionNow(request);
+  const commitVerification = verifyExposurePlanPermit({ permit: request.permit, now: commitNow });
+  if (!commitVerification.cryptographically_valid) {
+    return executionRejected(permitHash, nonce, commitVerification.code);
+  }
+  const commitSessionValidity = operatorSessionValidity(state, request.session_id, commitNow.getTime());
+  if (commitSessionValidity === "expired") return executionRejected(permitHash, nonce, "OPERATOR_SESSION_EXPIRED");
+  if (commitSessionValidity !== "valid") return executionRejected(permitHash, nonce, "SESSION_CONTEXT_MISMATCH");
+  expireExposureReservations(runtimeOf(state), commitNow);
+  view = getExposureReservationExecutionView(runtimeOf(state), request.reservation_id);
+  if (!view) return executionRejected(permitHash, nonce, "RESERVATION_NOT_FOUND");
+  if (view.reservation.state === "expired") return executionRejected(permitHash, nonce, "RESERVATION_EXPIRED");
+  if (view.reservation.state !== "accepted_reserved") return executionRejected(permitHash, nonce, "RESERVATION_NOT_ACTIVE");
   const overlay = authorization.paper_overlay;
   const baseline = overlay?.base_state ?? runtime.base_state;
   if (!isSameState(snapshot.state, baseline)) {
@@ -789,7 +940,7 @@ export async function executeExposurePlanReservation(
         before_state: cloneState(effectiveInitial),
         after_state: cloneState(currentEvaluation.final_state),
         source_provenance: snapshot.source.provenance,
-        created_at: now.toISOString(),
+        created_at: commitNow.toISOString(),
       },
     ],
   };
@@ -805,7 +956,7 @@ export async function executeExposurePlanReservation(
       runtime.state_revision += 1;
       runtime.source_revision += 1;
     },
-    { now },
+    { now: commitNow },
   );
   if (committed.status !== "paper_executed") return executionRejected(permitHash, nonce, committed.code, committed.details);
   return {

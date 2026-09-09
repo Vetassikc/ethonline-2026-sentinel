@@ -29,6 +29,7 @@ import {
 } from "./exposure-plan-service.ts";
 import {
   acceptExposurePlanForOperator,
+  authorizeExposureOperatorBootstrap,
   authorizeExposureOperatorMutation,
   buildExposurePlanRefreshSnapshot,
   cancelExposurePlanReservation,
@@ -37,6 +38,7 @@ import {
   getExposureOperatorCookieToken,
   isExposureOperatorHostAllowed,
   issueExposurePlanPermitForReservation,
+  resetExposurePlanOperatorSession,
   verifyExposurePlanPermitForOperator,
   type ExposurePlanOperatorBoundaryConfig,
   type ExposurePlanOperatorSession,
@@ -238,6 +240,15 @@ function resolveExposureDependencies(
     now: exposureDependencies.now ?? dependencies.now,
     runtimeState: exposureDependencies.runtimeState ?? EXPOSURE_RUNTIME_STATE,
   };
+}
+
+function resolveOperatorClock(
+  dependencies: JudgeModeRequestDependencies,
+  exposureDependencies: ExposureServiceDependencies,
+): () => Date {
+  return () => dependencies.operatorBoundary?.clock?.()
+    ?? exposureDependencies.now
+    ?? new Date();
 }
 
 const PLAN_REFRESH_REQUEST: ExposureRequest = {
@@ -626,14 +637,19 @@ export async function handleJudgeModeRequest(
   }
 
   if (method === "GET" && pathname === "/api/exposure/operator/session") {
-    if (!isExposureOperatorHostAllowed(requestContext.headers ?? {}, dependencies.operatorBoundary)) {
-      return { statusCode: 403, payload: { error: "operator_host_rejected" } };
-    }
     const exposureDependencies = resolveExposureDependencies(dependencies);
     const runtimeState = exposureDependencies.runtimeState ?? EXPOSURE_RUNTIME_STATE;
+    const operatorClock = resolveOperatorClock(dependencies, exposureDependencies);
+    const operatorNow = operatorClock();
+    const bootstrap = authorizeExposureOperatorBootstrap(
+      runtimeState,
+      requestContext.headers ?? {},
+      { now: operatorNow, boundary: dependencies.operatorBoundary },
+    );
+    if (!bootstrap.ok) return { statusCode: bootstrap.statusCode, payload: bootstrap.payload };
     const issued = createExposurePlanOperatorSession(runtimeState, {
-      cookie_token: getExposureOperatorCookieToken(requestContext.headers ?? {}),
-      now: exposureDependencies.now ?? new Date(),
+      cookie_token: bootstrap.cookie_token ?? getExposureOperatorCookieToken(requestContext.headers ?? {}),
+      now: operatorNow,
       boundary: dependencies.operatorBoundary,
     });
     return {
@@ -652,9 +668,11 @@ export async function handleJudgeModeRequest(
 
   if (method === "POST" && pathname.startsWith("/api/exposure/")) {
     const exposureDependencies = resolveExposureDependencies(dependencies);
-    const now = exposureDependencies.now ?? new Date();
+    const operatorClock = resolveOperatorClock(dependencies, exposureDependencies);
+    const now = operatorClock();
     const runtimeState = exposureDependencies.runtimeState ?? EXPOSURE_RUNTIME_STATE;
     const operatorMutationRoutes = new Set([
+      "/api/exposure/operator/session/reset",
       "/api/exposure/plan/accept",
       "/api/exposure/reservation/execute",
       "/api/exposure/reservation/cancel",
@@ -701,6 +719,22 @@ export async function handleJudgeModeRequest(
         idempotency_key: payload.idempotency_key as string,
         accept_partial: payload.accept_partial as boolean,
       }, { now });
+    }
+
+    if (pathname === "/api/exposure/operator/session/reset") {
+      if (!operatorSession || !isRecord(payload) || !hasExactKeys(payload, [])) {
+        return invalidExposureRouteRequest("The session reset body must be an empty JSON object.");
+      }
+      const reset = resetExposurePlanOperatorSession(runtimeState, operatorSession, {
+        now,
+        boundary: dependencies.operatorBoundary,
+      });
+      if (!reset) return { statusCode: 409, payload: { error: "operator_session_reset_unavailable" } };
+      return {
+        statusCode: 200,
+        payload: reset.session,
+        headers: { "set-cookie": reset.set_cookie },
+      };
     }
 
     if (pathname === "/api/exposure/reservation/cancel") {
@@ -764,6 +798,7 @@ export async function handleJudgeModeRequest(
           permit: permitValidation.permit,
           session_id: payload.session_id,
           mode: payload.mode,
+          clock: operatorClock,
           now,
         },
         () => refreshExposurePlanSource(dependencies, exposureDependencies, runtimeState, operatorSession!),

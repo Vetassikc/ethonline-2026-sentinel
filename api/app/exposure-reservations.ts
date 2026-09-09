@@ -100,6 +100,7 @@ export type ExposureReservationV1 = {
   state: ExposureReservationState;
   session_id: string;
   mode: ExposureReservationSessionMode;
+  source_provenance: ExposureSourceProvenance;
   runtime_generation: string;
   idempotency_key: string;
   created_at: string;
@@ -135,6 +136,7 @@ export type ExposureReservationRejectionCode =
   | "IDEMPOTENCY_STORE_FULL"
   | "RESERVATION_STORAGE_FULL"
   | "RESERVATION_NOT_FOUND"
+  | "RESERVATION_EXPIRED"
   | "INVALID_RESERVATION_STATE"
   | "STATE_CHANGED_REQUIRES_REEVALUATION";
 
@@ -553,6 +555,7 @@ function requestFingerprint(plan: ExposurePlanV1, request: ExposureReservationRe
     plan,
     evaluation_ref: request.evaluation_ref,
     graph_hash: request.graph_hash,
+    source_provenance: runtime.source.provenance,
     accept_partial: request.accept_partial === true,
     ...context,
   })).digest("hex");
@@ -658,6 +661,7 @@ function makeReservation(
     state: "accepted_reserved",
     session_id: context.session_id,
     mode: context.mode,
+    source_provenance: runtime.source.provenance,
     runtime_generation: context.runtime_generation,
     idempotency_key: request.idempotency_key,
     created_at: createdAt,
@@ -885,7 +889,8 @@ export function updateExposureReservationSource(
   const contextChanged = runtime.session_id !== snapshot.session_id
     || runtime.mode !== snapshot.mode
     || runtime.runtime_generation !== snapshot.runtime_generation;
-  if (contextChanged) {
+  const provenanceChanged = runtime.source.provenance !== snapshot.source.provenance;
+  if (contextChanged || provenanceChanged) {
     const nowMs = (options.now ?? new Date()).getTime();
     for (const record of activeRecords(runtime)) {
       transitionRelease(runtime, record, "invalidated", Number.isFinite(nowMs) ? nowMs : Date.now());

@@ -572,6 +572,7 @@ export type ExposureReservationV1 = {
   internal_acquired_consumed_units: string;
   state: ExposureReservationState;
   runtime_generation: string;
+  source_provenance: ExposureSourceProvenance;
   idempotency_key: string;
   created_at: string;
   expires_at: string;
@@ -627,6 +628,10 @@ same-session, same-mode, same-generation refresh. A context rotation changes
 session, mode or runtime generation, explicitly transitions active records to
 `invalidated` while retaining their historical records, and makes old
 acceptance-shaped replays fail the current context checks.
+Changing source provenance is also a reservation boundary: active records are
+invalidated and a new operator session must explicitly accept the new
+provenance. A block/hash change within the same provenance remains compatible
+when all qualified quantities and context checks still pass.
 
 Reservation identity binds:
 
@@ -686,6 +691,7 @@ export type ExposurePlanPermitPayload = {
   reservation_id: string;
   session_id: string;
   mode: "live" | "what_if";
+  source_provenance: ExposureSourceProvenance;
   runtime_generation: string;
   issued_at: number;
   expires_at: number;
@@ -696,22 +702,30 @@ export type ExposurePlanPermitPayload = {
 
 The plan permit is issued only after operator acceptance of the exact plan or
 repair candidate. Verification is pure. Paper execution checks runtime
-generation, reservation state, session ID, fresh source predicates and nonce
-before applying the plan. No model tool can sign, choose the account, change
-policy, cancel a reservation or invoke execution. A browser may request those
-server-controlled actions only through the explicit local operator session.
+generation, reservation state, session ID, independent source provenance,
+fresh source predicates and nonce before applying the plan. Provenance is
+bound separately from execution mode: `live` is not a replacement for
+`LIVE_SOURCE`, and a fixture/live transition requires a new explicit context.
+No model tool can sign, choose the account, change policy, cancel a reservation
+or invoke execution. A browser may request those server-controlled actions
+only through the explicit local operator session.
 
 The local operator boundary is not unrestricted founder authentication:
 mutating routes require a server-issued ephemeral `HttpOnly`,
 `SameSite=Strict` operator-session cookie, a matching same-origin `Origin` and
-`Host`, a CSRF nonce bound to that session, and no CORS allowance. The server
-rejects cross-origin mutation and never exposes the signer secret. This is a
-demo interaction boundary, not production access control.
+`Host`, a CSRF nonce bound to that session, and no CORS allowance. Session GET
+is non-destructive: a first local bootstrap is allowed without CSRF, but a
+missing/stale cookie cannot rotate an existing context, and foreign `Origin`
+or cross-site Fetch Metadata is rejected before state mutation. Explicit
+rotation uses the authorized reset route below. The server rejects
+cross-origin mutation and never exposes the signer secret. This is a demo
+interaction boundary, not production access control.
 
 The exact operator routes are:
 
 ```text
 GET  /api/exposure/operator/session
+POST /api/exposure/operator/session/reset
 POST /api/exposure/plan/accept
 POST /api/exposure/reservation/execute
 POST /api/exposure/reservation/cancel
@@ -724,6 +738,9 @@ Route bodies are server-bound and exact:
 ```text
 POST /api/exposure/plan/accept
 {"evaluation_ref":"exposure_<32 hex>","plan":<ExposurePlanV1>,"idempotency_key":"<opaque client key>","accept_partial":false}
+
+POST /api/exposure/operator/session/reset
+{}
 
 POST /api/exposure/reservation/execute
 {"reservation_id":"<server id>","permit":"<plan permit>","session_id":"<server session id>","mode":"live"}
@@ -743,6 +760,15 @@ token and calldata fields. `GET /api/exposure/operator/session` returns only
 the opaque session ID, CSRF nonce, runtime generation, policy version and
 mode; it never returns a credential or account identifier. The exact
 read-only planner tool is documented separately from these operator routes.
+
+Execution uses a server-owned injectable clock and reads it again after every
+awaited source refresh. At `now_ms >= expires_at_ms`, a reservation or
+operator session is expired; a permit remains valid at its integer-second
+`expires_at` boundary and is expired at the next second. The commit rechecks
+permit, reservation, session, runtime version and provenance together. An
+expiry rejection cannot append an overlay event or consume a nonce, and any
+reservation release is performed by the single idempotent lifecycle
+transition.
 
 The read-only planner tool does not receive the operator cookie.
 
