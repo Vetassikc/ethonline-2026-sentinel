@@ -2,7 +2,7 @@
 
 ## ETHOnline 2026 working entry point
 
-This public repository is being extended during ETHOnline 2026 Continuity. The current event scope, implementation plan, route contract, live-data gate, continuity disclosure and AI attribution are collected in [the ETHOnline documentation](docs/ethonline-2026/PLAN.md). The primary event surface is the narrow [Sentinel Exposure Graph](docs/ethonline-2026/SPEC.md): a wstETH-unit, source-attributed policy bound with a demo-only paper executor. USD valuation, external AI/MCP invocation and production deployment are not claimed.
+This public repository is being extended during ETHOnline 2026 Continuity. The current event scope, implementation plan, route contract, live-data gate, continuity disclosure and AI attribution are collected in [the ETHOnline documentation](docs/ethonline-2026/PLAN.md). The primary event surface is the narrow [Sentinel Exposure Graph](docs/ethonline-2026/SPEC.md): a wstETH-unit, source-attributed policy bound with a demo-only paper executor. One bounded external model/tool trace is recorded; MCP invocation, USD valuation and production deployment are not claimed.
 
 ![Sentinel-8004 cover](assets/cover/sentinel-8004-cover.png)
 
@@ -183,11 +183,21 @@ Reference visuals already in the repo:
   the repository.
 - The configured Graph source and same-block Base reads qualify one narrow
   wstETH shared-dependency case; the source manifest records its gaps.
-- `GET /exposure-graph` and the `/api/exposure/*` routes expose graph
-  provenance, exact cap arithmetic, a demo permit and a paper-executor
-  condition check.
+- `GET /exposure-graph` exposes the source-attributed graph plus the editable
+  Task 3 read-only plan/repair console. New plan results expose exact cap
+  arithmetic, hypothetical diagnostic projection and bounded repair without
+  reservation, signing, execution or runtime what-if controls. The legacy
+  single-purchase demo remains visually separate and keeps its own bounded
+  permit/replay enablement:
+  `GET /api/exposure/plan/config`,
+  `GET /api/exposure/plan/source/fixture`,
+  `GET /api/exposure/plan/demo/repair_over_limit`,
+  `GET /api/exposure/plan/demo/restore_aave_cap`, and
+  `POST /api/exposure/plan/validate`.
 - The local `sentinel_exposure_graph` tool accepts one exact read-only purchase
-  shape. It is not evidence of a genuine external model or MCP invocation.
+  shape. A separate recorded OpenRouter `openai/gpt-5` run demonstrates a
+  genuine external model-selected call to that tool; the local CLI by itself
+  is not that evidence.
 
 ## Demo-Only Boundaries
 
@@ -209,7 +219,7 @@ Reference visuals already in the repo:
 | `/` | Hosted submission hub |
 | `/judge` | Canonical judge walkthrough with proof artifacts |
 | `/operator` | Narrow operator dry-run for composing and submitting intents |
-| `/exposure-graph` | Local/event dependency graph and bounded paper-permit walkthrough |
+| `/exposure-graph` | Source-attributed dependency graph and read-only plan/repair review |
 
 The judge shell is intentionally read-only and judge-first.
 
@@ -230,6 +240,10 @@ Use these as the primary submission references:
   [assets/social/sentinel-8004-thread-card.png](assets/social/sentinel-8004-thread-card.png)
 - Slide deck HTML:
   [slides/sentinel-8004-submission-deck-v2.html](slides/sentinel-8004-submission-deck-v2.html)
+- Implemented Task 3 desktop capture:
+  [output/playwright/sentinel-task3-desktop.png](output/playwright/sentinel-task3-desktop.png)
+- Implemented Task 3 mobile capture:
+  [output/playwright/sentinel-task3-mobile.png](output/playwright/sentinel-task3-mobile.png)
 
 For judge narration, the most reusable proof object remains the validation
 artifact. For execution-rail narration, the strongest bridge is the Kraken
@@ -284,7 +298,9 @@ request, tool input or committed URL. Custom endpoints are chain-checked as
 - [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md)
 - [docs/ethonline-2026/GRAPH_SOURCE_MANIFEST.md](docs/ethonline-2026/GRAPH_SOURCE_MANIFEST.md)
 - [docs/ethonline-2026/AI_TOOL.md](docs/ethonline-2026/AI_TOOL.md)
+- [docs/ethonline-2026/EXTERNAL_AI_TRACE.md](docs/ethonline-2026/EXTERNAL_AI_TRACE.md)
 - [docs/ethonline-2026/DEMO.md](docs/ethonline-2026/DEMO.md)
+- [docs/ethonline-2026/SUBMISSION_DRAFT.md](docs/ethonline-2026/SUBMISSION_DRAFT.md)
 - [docs/SUBMISSION_MEDIA.md](docs/SUBMISSION_MEDIA.md)
 - [docs/SUBMISSION_FORM_FINAL.md](docs/SUBMISSION_FORM_FINAL.md)
 - [assets/README.md](assets/README.md)

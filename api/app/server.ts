@@ -21,6 +21,12 @@ import {
   type ExposureRuntimeState,
   type ExposureServiceDependencies,
 } from "./exposure-service.ts";
+import {
+  buildExposurePlanConfig,
+  evaluateExposurePlanDemo,
+  evaluateExposurePlanRequest,
+  issueExposurePlanFixtureReference,
+} from "./exposure-plan-service.ts";
 import { MAX_EXPOSURE_REQUEST_UNITS, validateExposureRequest } from "./exposure-request.ts";
 import { runGraphPositionQuery, type GraphFetchLike } from "./graph-client.ts";
 import { buildKrakenCliPaperSmokeArtifact } from "./kraken-cli-compat.ts";
@@ -291,7 +297,10 @@ function buildReplayEvaluation(evaluation: ExposureEvaluation): ExposureEvaluati
   };
 }
 
-async function buildScenarioBundle(pathname: string): Promise<JudgeModeResponse | null> {
+async function buildScenarioBundle(
+  pathname: string,
+  dependencies: JudgeModeRequestDependencies = {},
+): Promise<JudgeModeResponse | null> {
   if (pathname === "/healthz") {
     return {
       statusCode: 200,
@@ -317,6 +326,37 @@ async function buildScenarioBundle(pathname: string): Promise<JudgeModeResponse 
       statusCode: 200,
       payload: buildExposureConfig(),
     };
+  }
+
+  if (pathname === "/api/exposure/plan/config") {
+    return {
+      statusCode: 200,
+      payload: buildExposurePlanConfig(),
+    };
+  }
+
+  if (pathname === "/api/exposure/plan/source/fixture") {
+    const exposureDependencies = resolveExposureDependencies(dependencies);
+    return issueExposurePlanFixtureReference("repair_over_limit", {
+      runtimeState: exposureDependencies.runtimeState,
+      now: exposureDependencies.now,
+    });
+  }
+
+  const exposurePlanFixtureSourcePrefix = "/api/exposure/plan/source/fixture/";
+  if (pathname.startsWith(exposurePlanFixtureSourcePrefix)) {
+    const caseName = pathname.slice(exposurePlanFixtureSourcePrefix.length);
+    const exposureDependencies = resolveExposureDependencies(dependencies);
+    return issueExposurePlanFixtureReference(caseName as Parameters<typeof issueExposurePlanFixtureReference>[0], {
+      runtimeState: exposureDependencies.runtimeState,
+      now: exposureDependencies.now,
+    });
+  }
+
+  const exposurePlanDemoPrefix = "/api/exposure/plan/demo/";
+  if (pathname.startsWith(exposurePlanDemoPrefix)) {
+    const caseName = pathname.slice(exposurePlanDemoPrefix.length);
+    return evaluateExposurePlanDemo(caseName);
   }
 
   if (pathname === "/api/demo/shared-sepolia") {
@@ -536,7 +576,7 @@ export async function handleJudgeModeRequest(
   }
 
   if (method === "GET") {
-    const scenarioBundle = await buildScenarioBundle(pathname);
+    const scenarioBundle = await buildScenarioBundle(pathname, dependencies);
     if (scenarioBundle) {
       return scenarioBundle;
     }
@@ -556,6 +596,14 @@ export async function handleJudgeModeRequest(
     const exposureDependencies = resolveExposureDependencies(dependencies);
     const now = exposureDependencies.now ?? new Date();
     const runtimeState = exposureDependencies.runtimeState ?? EXPOSURE_RUNTIME_STATE;
+
+    if (pathname === "/api/exposure/plan/validate") {
+      const result = evaluateExposurePlanRequest(payload, {
+        runtimeState,
+        now,
+      });
+      return result;
+    }
 
     if (pathname === "/api/exposure/evaluate") {
       const validation = validateExposureRequest(payload);

@@ -38,12 +38,17 @@
 - Permit issuance, independent verification, fresh-condition checks and
   one-use paper execution are implemented behind bounded server routes. State
   is in memory and expires; durable authorization is not claimed.
-- `GET /exposure-graph` renders the graph, provenance, decision, demo permit,
-  paper executor and labeled replay. A synthetic browser rehearsal completed
-  the full flow at narrow width; it is explicitly `FIXTURE`/`REPLAY`, not live
-  portfolio evidence.
-- `npm test` passes `173` tests with zero failures, skips or todos. The UI
-  contract test passes `3/3`; JavaScript syntax and `git diff --check` pass.
+- `GET /exposure-graph` renders the graph, provenance, editable Task 3
+  read-only plan/repair console and a separately accessible legacy
+  single-purchase demo. The screen has no reservation, signing, execution or
+  runtime what-if controls; the new internal Task 4A ledger is not exposed by
+  the route. Legacy permit/replay controls are enabled only by their own
+  eligible stored evaluation.
+- Task 1/2 exact plan validation, accounting, diagnostic projection and repair
+  checks remain green. After the current Task 3/Task 4A correction checkpoint,
+  the focused service/UI/lifecycle/reservation checks pass `39/39`, and
+  `npm test` passes `238` tests with zero failures, skips or todos; JavaScript
+  syntax and `git diff --check` pass.
 - The smallest external-client path is implemented locally as a native-fetch
   provider-selectable Responses wrapper around `sentinel_exposure_graph`; the
   focused provider tests pass `6/6`. It is bounded to two AI requests, one
@@ -52,6 +57,121 @@
   natural-language → model tool call → live source-backed policy chain for a
   read-only `0.5 wstETH` check. The result was `ALLOW` with source status `ok`
   at block `51033233`; no signing or execution authority was exposed.
+- The external client now exposes a deterministic
+  `application_generated_summary` derived only from the validated sanitized
+  tool result. It is explicitly labeled as not completed model prose; the
+  partial `model_response` remains separate and unchanged.
+
+## FACT — Task 3 read-only plan boundary
+
+- `POST /api/exposure/plan/validate` accepts only an opaque server evaluation
+  reference and a strict versioned plan. Account, policy, provider, source and
+  eligibility inputs are not client-controlled.
+- `GET /api/exposure/plan/source/fixture` and its allowlisted template variants
+  issue short-lived server-owned fixture references. The planner also exposes
+  an explicit qualified-live path through the existing server-side evaluation
+  route; a live-source failure remains an error and is never replaced by a
+  fixture.
+- The implemented form allows only the two registered demo agents, four
+  supported goals, three allowlisted actions and one to three ordered steps.
+  Exact decimal strings are submitted unchanged; changing source or any plan
+  input clears the prior result, and late responses are ignored by sequence.
+- The service preserves source mode and qualification separately from the
+  legacy `BUY_EXPOSURE` verdict. A source-backed debt-free Aave withdrawal can
+  be evaluated even when the legacy purchase verdict is `DENY`.
+- Exact engine quantities cross the service boundary as decimal/raw strings.
+  Source failure and expired references are explicit; no failed live source is
+  replaced with fixture data.
+- The canonical fixture is independently recorded as: initial direct/Aave
+  `.40/.40`, hypothetical diagnostic total/Aave `1.10/.70` with both cap
+  violations, and engine repair acquire/supply `.20/.10` ending at
+  direct/Aave/total `.50/.50/1.00` with `PARTIAL` goal fulfillment. The
+  diagnostic projection is not authorization replay.
+- Separate fixture cases cover cap-restoring withdrawal and unsupported
+  `reduce_total_exposure`. Shared reservations and runtime what-if return an
+  explicit Task 3 boundary response; they are not fabricated successes.
+- Implemented-route browser captures are
+  `output/playwright/sentinel-task3-desktop.png` and
+  `output/playwright/sentinel-task3-mobile.png`. They show the fixture label,
+  shared dependency graph, compact exact values and the decision-first mobile
+  layout. They do not establish production, sponsor or live-transaction
+  readiness.
+- Browser acceptance exercised the implemented route, not only markup: the
+  canonical fixture loaded through a server-issued reference, an edited
+  `.100000000000000000` target produced a second POST with the edited plan,
+  malformed input cleared the prior decision, mocked `410`/`503` responses
+  stayed explicit, and a delayed first response could not overwrite a newer
+  `.200000000000000000` result. Enter-key submission, mobile width with zero
+  horizontal overflow, connected graph edges, the cap-restoring template and
+  the separate eligible legacy controls were also checked. The `410`/`503`
+  and delayed-response checks are controlled browser fixtures, not live-source
+  evidence.
+
+- The Task 3 request-lifecycle regression is verified in the browser with a
+  deterministically held `POST /api/exposure/plan/validate`: editing the exact
+  target to `0.200000000000000000` immediately re-enabled Evaluate, the old
+  response left the plan labeled `FIXTURE · STALE`, and a new explicit
+  evaluation recovered `0.2 wstETH` without a reload. The controlled capture
+  is [sentinel-task4a-recovery-desktop.png](../../output/playwright/sentinel-task4a-recovery-desktop.png).
+- The cross-kind lifecycle correction is also verified against the implemented
+  route: a deferred fixture-source response remained the current source load
+  when Evaluate was invoked before it settled; source controls stayed disabled
+  while loading, and the same page recovered to the server-derived canonical
+  result after the response was released. The sanitized captures are
+  [sentinel-task4a-cross-kind-pending.png](../../output/playwright/sentinel-task4a-cross-kind-pending.png)
+  and
+  [sentinel-task4a-cross-kind-recovered.png](../../output/playwright/sentinel-task4a-cross-kind-recovered.png).
+- A source-switch failure run kept an old evaluation request pending, returned
+  an explicit fixture-source error, re-enabled Evaluate, and left the error
+  unchanged after the stale evaluation response was released. The sanitized
+  capture is
+  [sentinel-task4a-source-failure-recovery.png](../../output/playwright/sentinel-task4a-source-failure-recovery.png).
+
+## FACT — Task 4A process-local reservation core
+
+- `api/app/exposure-reservations.ts` now contains an internal, process-local
+  reservation ledger. It binds each admission to the server-owned account
+  scope, policy, qualified source identity, session mode and runtime
+  generation. `createExposureRuntimeState()` owns a fresh isolated reservation
+  runtime while the legacy evaluation, permit and nonce maps remain unchanged.
+- Admission recomputes the exact plan against the current qualified state and
+  all active reservations. It does not accept a prior PASS result or any model
+  output as authority. PARTIAL results require `accept_partial: true`; invalid
+  policy, unsatisfied goals, unsupported execution prerequisites and source
+  failure remain fail-closed.
+- In the canonical `.40` direct / `.40` Aave / `.80` total fixture, two
+  independently feasible acquire-only `.15` plans were admitted through one
+  ledger in a deterministic simultaneous interleaving: `agent_a` was
+  `accepted_reserved` with peak total increase `.15` and peak Aave increase
+  `0`; `agent_b` was rejected with `SHARED_CAPACITY_INSUFFICIENT`. The exact
+  remaining total headroom was `.05`; Aave headroom remained `.10` and active
+  reservation count was `1`.
+- Protocol-cap contention is separate: supply `.15` from Aave `.40` was
+  rejected for `aave_cap_exceeded`, not treated as shared total-headroom
+  contention. Direct-inventory and Aave-inventory conflicts are checked as
+  separate resources. A pending withdrawal does not release cap capacity;
+  supply→withdraw retains its intermediate peak Aave requirement.
+- Cancellation, expiry and duplicate release use one release event and return
+  capacity exactly once. Identical idempotency keys return the original
+  active reservation even after a shorter idempotency interval has elapsed; a
+  different payload returns `IDEMPOTENCY_KEY_CONFLICT`. Active receipts are
+  never evicted to satisfy a bounded store. Once a reservation is terminal,
+  retention starts at that terminal transition and an identical retry returns
+  `IDEMPOTENCY_KEY_TERMINAL` rather than an acceptance-shaped historical
+  receipt; after bounded post-terminal retention, the key may be reused.
+- Source updates preserve active reservations for a same-session,
+  same-mode, same-generation refresh. A session/mode/runtime-generation
+  rotation explicitly transitions active records to `invalidated` without
+  deleting the historical record, and current context validation runs before
+  the idempotency cache can return any acceptance-shaped result.
+- Awaited refresh tests cover source failure and state/reservation changes
+  during refresh. Both return without a new reservation or capacity debit;
+  runtime generation, session, mode and source identity mismatches reject
+  stale admission.
+- This is an internal admission/accounting core only. No Task 4B HTTP
+  acceptance route, plan permit, signing, execution, paper overlay, runtime
+  what-if or reservation UI was added. It must not be presented as completed
+  plan authorization or execution.
 
 ## FACT — bounded diagnosis and live paper gate
 
@@ -143,6 +263,11 @@ passed.
   `10.000000000000000001` with the bounded maximum error. This is distinct from
   same-permit replay rejection and from live source availability.
 
+The changed-condition branch has reproducible fixture coverage: the existing
+condition test verifies that a valid old permit is rejected as
+`CURRENT_HEADROOM_INSUFFICIENT` when refreshed fixture headroom is zero. This
+is controlled fixture evidence, not a live Aave changed-condition replay.
+
 One in-session model-to-local-contract invocation also mapped a natural-language
 intent to the restricted `sentinel_exposure_graph` schema while keeping account,
 policy, provider, signing and execution server-owned. That live read returned
@@ -204,6 +329,10 @@ though the tool/source chain was demonstrated. No retry followed.
   not retained by the wrapper.
 - Evaluation references, pending-account locks and consumed nonces are
   process-local in-memory state and disappear on restart.
+- Task 4A reservations are also process-local and invalid after a new runtime
+  generation. Task 4B still has to add the operator/session boundary,
+  plan-bound permit, fresh paper recheck, overlay execution and what-if
+  integration before any reservation can be called an authorization.
 - No production deployment, wallet transaction, live trade, portal
   submission, outbound message, adoption, partnership, revenue, audit,
   security assurance or prize outcome is claimed.
@@ -219,18 +348,43 @@ memory disclosure and memory-exhaustion DoS advisories). This is a dependency
 review item, not proof of an exploitable application path. No forced upgrade or
 dependency mutation was performed.
 
+## FACT — demo and submission preparation
+
+- A single 2:30–3:00 demo sequence is drafted in [DEMO.md](./DEMO.md) and
+  [../../docs/DEMO_SCRIPT.md](../../docs/DEMO_SCRIPT.md). It keeps live
+  Graph/RPC data, the external model/tool trace, the separate paper-execution
+  run, fixture negatives and synthetic UI rehearsal explicitly distinct.
+- The external client now exposes a deterministic application-generated
+  summary derived only from validated tool output. The preparation artifact
+  renders that summary from the already recorded sanitized tool result; it does
+  not repair or replace the truncated model explanation.
+- The sanitized recorded trace and its application-generated summary are
+  preserved in [EXTERNAL_AI_TRACE.md](./EXTERNAL_AI_TRACE.md). No new paid
+  provider request was made to create this preparation artifact.
+- Public-safe pitch, architecture, Continuity baseline/new-work disclosure,
+  reproduction instructions, AI attribution and limitations are drafted in
+  [SUBMISSION_DRAFT.md](./SUBMISSION_DRAFT.md). No project record, video upload
+  or portal submission has been made.
+- The official ETHOnline requirements were checked on September 8, 2026:
+  public repository, 2–4 minute video at 720p or higher, Continuity disclosure,
+  AI attribution and up to three partner-prize selections. See the [official
+  submission details](https://ethglobal.com/events/ethonline2026/info/details)
+  and [The Graph Continuity qualification](https://ethglobal.com/events/ethonline2026/prizes/the-graph).
+
 ## Next bounded actions
 
 1. If stronger repeatability is still worth the event scope, investigate the
    one-unit historical-read mismatch with a bounded source trace; do not
    weaken the fresh-condition gate, exact arithmetic or fall back to a fixture.
-2. No further external provider/model attempts are planned for this bounded
-   slice. If complete prose output is required, inspect the response-completion
-   state and obtain separate approval before any new paid request; do not
-   weaken the tool validator or grant the model control of account, policy,
-   URLs, signing or execution.
-3. Founder reviews this narrow action policy and decides whether further
-   reproduction/media work is worth the remaining event scope.
+2. No further external provider/model attempts are planned. Use the
+   application-generated summary for the demo; do not obtain a new paid call
+   merely to repair the model prose.
+3. Founder reviews the submission draft, records the narrated 2–4 minute video,
+   checks the live Hacker Dashboard fields and decides separately whether to
+   publish the project.
+4. Task 4B remains a separate review gate for operator-session routes,
+   plan-bound permits, fresh paper execution and runtime what-if integration;
+   the current Task 4A core must not be narrated as those capabilities.
 
 ## Authority boundary
 

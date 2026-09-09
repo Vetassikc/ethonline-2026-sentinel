@@ -1,147 +1,114 @@
-# Sentinel-8004 Demo Script
+# Sentinel Exposure Graph — 2–3 minute demo script
 
-## Demo Goal
+This is the primary ETHOnline 2026 recording outline. Keep the recording
+between two and four minutes, target about 2:45, use the founder's own spoken
+narration and label every evidence source. The live model trace and live paper
+execution were recorded separately; the video must not imply one continuous
+transactional run.
 
-Show that Sentinel-8004 is a risk guardrail for autonomous trading agents, not
-another trading bot.
+## 0:00–0:20 — Thesis
 
-## Recommended Live Sequence
+Show the title card or `/exposure-graph`.
 
-### 1. Open With The Thesis
+Say:
 
-Use a one-sentence framing:
+> Autonomous agents can hold the same underlying asset through different
+> paths. Sentinel Exposure Graph finds that shared dependency and bounds the
+> next purchase before a paper permit is accepted. It is a source-attributed
+> wstETH policy demo, not a wallet or trading execution product.
 
-`Sentinel-8004 is a signed trade-permit guardrail for autonomous trading agents.`
+## 0:20–0:55 — Shared dependency and cap
 
-### 2. Show The Core Flow
+Show the live evaluation on `/exposure-graph`.
 
-Explain the narrow flow:
+Say:
 
-`agent identity binds to a typed trade intent -> Sentinel evaluates -> allow / deny / downsize -> signed verdict + validation artifact -> auditable trace`
+> The Graph provides the account-position relation and indexed block. One path
+> is a direct wstETH holding; the other is an Aave V3 wstETH supply claim.
+> Both converge on one wstETH asset, so the policy counts the dependency once
+> per capital path and keeps debt separate. The server-owned cap is exactly
+> 1.000000000000000000 wstETH. The displayed gross exposure leaves the shown
+> headroom, and the allowed amount is calculated with exact integer arithmetic.
 
-### 3. Show The Signed Intent Bundle
+Point to the source status, common block and visible
+`usd_valuation_unavailable` / `stale_oracle_price` gaps. Do not invent USD
+values.
 
-Before jumping into the live scenarios, show the canonical typed bundle:
+## 0:55–1:25 — External model/tool evidence
 
-```bash
-node scripts/sign-intent.ts allow-btc-buy
-node scripts/verify-signed-intent.ts allow-btc-buy
-```
+Show the sanitized output of the recorded OpenRouter `openai/gpt-5` run.
 
-Point out:
+Say:
 
-- the operator wallet and agent wallet binding
-- the demo-only fixture key is public by design and used only for reproducible signing
-- the EIP-712 digest and signature recovery are real
-- the fact that the verifier recomputes the Sentinel evaluation and permit check
+> This is a separate genuine external model invocation. The user asked in
+> natural language whether a bounded 0.5 wstETH purchase was allowed. The
+> model selected the restricted `sentinel_exposure_graph` function. The local
+> validator accepted only the exact versioned request, then the tool returned a
+> live source-backed `ALLOW` result at block 51033233.
 
-### 4. Walk Through Four Scenarios
+Highlight the tool name, validated arguments, source status and policy fields.
+Then show the `application_generated_summary` field and say:
 
-If you are using the hosted app root, open `http://127.0.0.1:8787/` first and
-use the primary CTA to enter the live judge demo.
+> The next paragraph is generated deterministically by the application from
+> validated tool output. It is explicitly not completed model prose. The
+> captured model explanation ended at the bounded output limit, so I preserve
+> that limitation instead of filling it in.
 
-If you are using the demo shell directly, open
-`http://127.0.0.1:8787/judge` and keep the browser on the single scenario
-picker throughout the walkthrough.
+Do not show keys, account identifiers or provider URLs. Say that account,
+policy, provider configuration, signing and execution remain server-owned or
+outside model control.
 
-#### Scenario A: Safe Trade Approved
+## 1:25–2:10 — Permit, paper execution and replay
 
-Show the approved BTC example.
+Switch to the separately recorded live paper-execution evidence.
 
-#### Scenario B: Unsafe Trade Denied
+Say:
 
-Show a trade denied because it violates the configured risk envelope.
+> This is a different recorded run. A fresh bounded request produced a new
+> permit. Independent verification passed its signature, bindings, expiry,
+> amount, audience and current-condition checks. The paper executor returned
+> `PAPER_EXECUTED`. Reusing that same permit then returned
+> `NONCE_ALREADY_USED` with HTTP 409. No wallet transaction was sent.
 
-#### Scenario C: Trade Downsized
+Show only sanitized permit metadata and the result codes. Do not imply that
+the external model signed or executed anything.
 
-Show that the system can preserve intent while reducing exposure, then verify
-that only the downsized execution envelope is permitted.
+## 2:10–2:40 — Negative evidence and limitations
 
-#### Scenario D: Fail-Closed
+Show a separate validation result for
+`10.000000000000000001 wstETH` and say:
 
-Show that missing critical inputs lead to a blocked execution path.
+> Invalid input is rejected at the bounded request boundary. Separately, the
+> changed-condition branch is covered by a controlled fixture: a valid old
+> permit is rejected as `CURRENT_HEADROOM_INSUFFICIENT` after fixture
+> headroom changes. That is fixture evidence, not a live Aave replay.
 
-### 5. Show The Signed Verdict Shape
+Close:
 
-Highlight fields such as:
+> The one-raw-unit Aave mismatch remains visible and unexplained; no tolerance
+> was added. USD/oracle coverage is intentionally limited, paper state is
+> in-memory, and this demo does not claim production readiness or sponsor
+> qualification.
 
-- `trace_id`
-- `verdict`
-- `allowed_notional_usd`
-- `reason_code`
-- `expires_at`
-- `decision_hash`
-- `signed_verdict.permit_hash`
-- `signed_verdict.permit_payload.approved_notional_usd`
-- `signed_verdict.signature`
+## Evidence labels to keep on screen
 
-### 6. Show The Validation Artifact
+- `LIVE`: current Graph/RPC source-backed evaluation or the separately recorded
+  live paper-executor run.
+- `EXTERNAL TRACE`: the recorded OpenRouter model/tool round trip.
+- `FIXTURE`: controlled changed-condition or invalid-input regression evidence.
+- `SYNTHETIC UI` / `REPLAY`: browser rehearsal state, not live account evidence.
 
-Point out fields such as:
+For a local planner rehearsal, use the server-issued fixture reference, edit
+an exact decimal-string target or ordered step, and press `Evaluate plan`.
+Show the response as read-only diagnostic/repair output. Keep the new planner
+separate from the restored legacy permit, paper-execution and replay controls;
+the planner never enables or reuses those controls.
 
-- `validation_artifact.registration_id`
-- `validation_artifact.proof_status`
-- `validation_artifact.permit_hash`
-- `validation_artifact.demo_only`
+## Recording rules
 
-Explain that this is the public-safe ERC-8004-facing proof layer for the demo,
-not a claim of live on-chain registry verification.
-
-### 7. Show Permit Verification
-
-Run the permit verifier on the downsized ETH scenario and point out:
-
-- the original request no longer fits the approved envelope
-- the downsized request becomes executable
-- the signed artifact binds execution scope to the agent and market context
-
-### 8. Show The Kraken Execution Preview
-
-On the same downsized scenario, point out:
-
-- the requested Kraken-shaped order preview
-- the smaller executable order emitted behind the permit gate
-- `validate: true` means preview only, not live trading
-
-### 8.5. Optional Founder Rehearsal Cutaway
-
-If you want one extra realism cutaway outside the main judge walkthrough, use
-the founder rehearsal flow from `docs/PAPER_SMOKE_REHEARSAL.md`.
-
-This is useful when you want to show that the same downsized scenario can be
-walked from operator dry-run into a corrected Kraken paper smoke template
-without making any live execution claim.
-
-### 9. Close With The Positioning
-
-End with:
-
-`We do not build bots for capital deployment. We build guardrails for bots that move capital.`
-
-## Reusable Submission Assets
-
-Use the asset pack in `../assets/README.md` for submission materials.
-
-Recommended mapping:
-
-- cover image
-  - `../assets/cover/sentinel-8004-cover.png`
-- default demo screenshot
-  - `../assets/screenshots/judge-demo-allow-btc-buy.png`
-- constrained demo screenshot
-  - `../assets/screenshots/judge-demo-downsize-eth-buy.png`
-- social/share card
-  - `../assets/social/sentinel-8004-thread-card.png`
-
-For video overlays and narration, the `Validation Artifact` payload is the best
-single proof object to keep on screen because it ties the agent registration,
-decision hash, permit hash, and demo-only proof status together.
-
-If you want one command-line proof cutaway before the browser segment, use the
-signed intent verifier output. It is the most explicit way to show what was
-signed, what was verified, and how that bundle maps into the existing Sentinel
-guardrail flow.
-
-## Demo Rule
-
-Prefer a clean, reproducible judge-mode flow over a fragile live integration.
+- Use at least 720p, clear spoken narration and no AI voiceover.
+- Do not speed up the recording or use a mobile phone capture.
+- Remove waiting time by editing cuts, but do not merge independent runs into a
+  false continuous sequence.
+- Keep the repository, source manifest and limitations visible in the written
+  submission; the video is a concise proof walkthrough, not a production claim.

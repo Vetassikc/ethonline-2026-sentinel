@@ -75,7 +75,8 @@ to use a stale or synthetic live result.
 - [x] Configure an existing external AI client without installing a broad
   platform or exposing credentials.
 - [x] Capture the actual natural-language request, model-selected tool call,
-  validated arguments, source-derived result and bounded explanation.
+  validated arguments, source-derived result, bounded model response and the
+  deterministic application-generated summary.
 - [x] Keep the local CLI and schema description clearly separate from this
   external integration claim.
 

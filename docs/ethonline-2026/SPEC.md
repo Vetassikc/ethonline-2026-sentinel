@@ -3,8 +3,9 @@
 Status: the narrow Base/wstETH source case, graph accounting, bounded request,
 demo permit, fresh-condition paper executor, tool boundary, routes and
 judge-readable screen are implemented. The policy is denominated in wstETH
-units, not USD. External AI/MCP invocation, durable state, deployment and a
-public demo-account selection remain outside the verified slice.
+units, not USD. One bounded external model/tool invocation is recorded
+separately; MCP invocation, durable state, deployment and a public demo-account
+selection remain outside the verified slice.
 
 ## User story
 
@@ -123,9 +124,11 @@ Evaluation and nonce state are in memory and lost on restart.
 
 `sentinel_exposure_graph` is a read-only, exact-schema tool around the same
 server-owned evaluation service. The repository's local CLI proves validation
-and source wiring; it does not prove that an external model selected the tool.
-The browser sends only bounded requests to server routes and never receives
-Graph credentials or arbitrary provider URLs.
+and source wiring. The separate recorded OpenRouter trace demonstrates an
+external model selecting the tool; its application-generated summary is derived
+from validated output because the captured model prose was truncated. The
+browser sends only bounded requests to server routes and never receives Graph
+credentials or arbitrary provider URLs.
 
 `/exposure-graph` presents the request/operator limit, two graph paths,
 clickable provenance, decision arithmetic, demo permit, signature checks,

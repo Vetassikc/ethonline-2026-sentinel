@@ -15,6 +15,11 @@ import {
 import { evaluateExposurePolicy } from "./exposure-policy.ts";
 import { runGraphPositionQuery, type GraphFetchLike, type GraphPositionResult } from "./graph-client.ts";
 import { resolveGraphPositionOptions } from "../../scripts/graph-position.ts";
+import {
+  createExposureReservationRuntime,
+  type ExposureReservationRuntime,
+  type ExposureReservationRuntimeOptions,
+} from "./exposure-reservations.ts";
 import type {
   ExposureEvaluation,
   ExposureGraphV1,
@@ -41,6 +46,11 @@ export type ExposureRuntimeState = {
   evaluations: Map<string, StoredExposureEvaluation>;
   consumed_nonces: Set<string>;
   pending_accounts: Set<string>;
+  reservation_runtime: ExposureReservationRuntime;
+};
+
+export type ExposureRuntimeStateOptions = {
+  reservation?: Partial<ExposureReservationRuntimeOptions>;
 };
 
 export type ExposureServiceDependencies = {
@@ -70,16 +80,17 @@ export type ExposureEvaluationResponse = {
   expires_at: string | null;
 };
 
-function createEmptyState(): ExposureRuntimeState {
+function createEmptyState(options: ExposureRuntimeStateOptions = {}): ExposureRuntimeState {
   return {
     evaluations: new Map(),
     consumed_nonces: new Set(),
     pending_accounts: new Set(),
+    reservation_runtime: createExposureReservationRuntime(options.reservation),
   };
 }
 
-export function createExposureRuntimeState(): ExposureRuntimeState {
-  return createEmptyState();
+export function createExposureRuntimeState(options: ExposureRuntimeStateOptions = {}): ExposureRuntimeState {
+  return createEmptyState(options);
 }
 
 function safeRequest(request: ExposureRequest): ExposureRequest {

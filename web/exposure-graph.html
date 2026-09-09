@@ -18,8 +18,8 @@
               <p class="eyebrow">Sentinel-8004 · Base · source-attributed guardrail</p>
               <h1>Sentinel Exposure Graph</h1>
               <p class="intro">
-                A bounded wstETH paper-purchase flow that traces direct holdings and
-                Aave supply claims to one asset before a signed permit can be used.
+                A bounded wstETH exposure review that traces direct holdings and
+                Aave supply claims to one asset before any authorization boundary.
               </p>
             </div>
             <div class="exposure-badge-stack" aria-label="Demo mode badges">
@@ -47,6 +47,308 @@
       <div id="exposure-status" class="exposure-status" role="status" aria-live="polite">
         Loading server-owned exposure configuration…
       </div>
+
+      <div class="plan-primary-workspace">
+      <section id="plan-intent-panel" class="card plan-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="section-label">Task 3 · read-only plan review</p>
+            <h2>Review the dependency impact before authorization</h2>
+            <p class="panel-summary">
+              The service resolves the source, policy and paper-session eligibility on the server.
+              This screen can explain and repair a plan; it cannot reserve, sign or execute it.
+            </p>
+          </div>
+          <span id="plan-case-mode" class="status-pill status-pill-neutral">FIXTURE PENDING</span>
+        </div>
+        <div class="plan-case-switcher" role="group" aria-label="Read-only plan review cases">
+          <button id="plan-case-repair" type="button" class="plan-case-button">Canonical repair</button>
+          <button id="plan-case-restore" type="button" class="plan-case-button">Restore Aave cap</button>
+          <button id="plan-case-total" type="button" class="plan-case-button">Unsupported total reduction</button>
+        </div>
+        <p id="plan-case-status" class="field-note" role="status" aria-live="polite">
+          Loading the canonical fixture from the read-only service…
+        </p>
+        <form id="plan-edit-form" class="plan-edit-form" novalidate>
+          <div class="plan-source-controls">
+            <div>
+              <p class="section-label">Evidence source</p>
+              <p id="plan-source-status" class="field-note">Choose a server-resolved fixture reference or request qualified live evidence.</p>
+            </div>
+            <div class="plan-source-actions" role="group" aria-label="Plan evidence source">
+              <button id="plan-source-fixture" type="button" class="plan-case-button">Use fixture reference</button>
+              <button id="plan-source-live" type="button" class="plan-case-button">Use qualified live evidence</button>
+            </div>
+            <p class="field-note"><strong>Reference:</strong> <span id="plan-source-reference">not loaded</span></p>
+          </div>
+          <div class="plan-edit-grid">
+            <label class="plan-edit-field" for="plan-agent-select">
+              <span>Agent</span>
+              <select id="plan-agent-select" name="agent_id">
+                <option value="agent_a">Agent A</option>
+                <option value="agent_b">Agent B</option>
+              </select>
+            </label>
+            <label class="plan-edit-field" for="plan-goal-select">
+              <span>Goal</span>
+              <select id="plan-goal-select" name="goal_kind">
+                <option value="acquire_up_to">Acquire up to</option>
+                <option value="supply_up_to">Supply up to</option>
+                <option value="reduce_aave_exposure">Reduce Aave exposure</option>
+                <option value="reduce_total_exposure">Reduce total exposure</option>
+              </select>
+            </label>
+            <label class="plan-edit-field plan-edit-field-wide" for="plan-target-input">
+              <span>Exact target (wstETH)</span>
+              <input id="plan-target-input" name="target_units" inputmode="decimal" autocomplete="off" value="0.300000000000000000" aria-describedby="plan-target-help" />
+              <small id="plan-target-help">Decimal string, up to 18 places. No floating-point conversion.</small>
+            </label>
+          </div>
+          <fieldset class="plan-step-editor">
+            <legend>Ordered steps · 1–3</legend>
+            <div id="plan-step-rows" class="plan-step-rows">
+              <div class="plan-step-row" data-step-index="0">
+                <span class="plan-step-number">1</span>
+                <label class="plan-edit-field" for="plan-step-0-action">
+                  <span>Action</span>
+                  <select id="plan-step-0-action" class="plan-step-action" name="step_0_action">
+                    <option value="acquire_wsteth">Acquire wstETH</option>
+                    <option value="supply_aave">Supply to Aave</option>
+                    <option value="withdraw_aave_to_wallet">Withdraw Aave supply</option>
+                  </select>
+                </label>
+                <label class="plan-edit-field" for="plan-step-0-quantity">
+                  <span>Exact quantity</span>
+                  <input id="plan-step-0-quantity" class="plan-step-quantity" name="step_0_quantity" inputmode="decimal" autocomplete="off" value="0.300000000000000000" />
+                </label>
+              </div>
+              <div class="plan-step-row" data-step-index="1">
+                <span class="plan-step-number">2</span>
+                <label class="plan-edit-field" for="plan-step-1-action">
+                  <span>Action</span>
+                  <select id="plan-step-1-action" class="plan-step-action" name="step_1_action">
+                    <option value="acquire_wsteth">Acquire wstETH</option>
+                    <option value="supply_aave" selected>Supply to Aave</option>
+                    <option value="withdraw_aave_to_wallet">Withdraw Aave supply</option>
+                  </select>
+                </label>
+                <label class="plan-edit-field" for="plan-step-1-quantity">
+                  <span>Exact quantity</span>
+                  <input id="plan-step-1-quantity" class="plan-step-quantity" name="step_1_quantity" inputmode="decimal" autocomplete="off" value="0.300000000000000000" />
+                </label>
+              </div>
+              <div class="plan-step-row" data-step-index="2" hidden>
+                <span class="plan-step-number">3</span>
+                <label class="plan-edit-field" for="plan-step-2-action">
+                  <span>Action</span>
+                  <select id="plan-step-2-action" class="plan-step-action" name="step_2_action">
+                    <option value="acquire_wsteth">Acquire wstETH</option>
+                    <option value="supply_aave">Supply to Aave</option>
+                    <option value="withdraw_aave_to_wallet">Withdraw Aave supply</option>
+                  </select>
+                </label>
+                <label class="plan-edit-field" for="plan-step-2-quantity">
+                  <span>Exact quantity</span>
+                  <input id="plan-step-2-quantity" class="plan-step-quantity" name="step_2_quantity" inputmode="decimal" autocomplete="off" value="0.100000000000000000" />
+                </label>
+              </div>
+            </div>
+            <div class="control-row plan-step-actions">
+              <button id="plan-add-step" type="button" class="plan-case-button">Add step</button>
+              <button id="plan-remove-step" type="button" class="plan-case-button">Remove last step</button>
+            </div>
+          </fieldset>
+          <div class="control-row plan-evaluate-row">
+            <button id="plan-evaluate" type="submit">Evaluate plan</button>
+            <span id="plan-form-error" class="field-note" role="alert"></span>
+          </div>
+        </form>
+        <div class="plan-intent-grid">
+          <div class="plan-intent-card">
+            <p class="section-label">Submitted intent</p>
+            <dl class="plan-detail-list">
+              <div><dt>Agent</dt><dd id="plan-agent">—</dd></div>
+              <div><dt>Goal</dt><dd id="plan-goal">—</dd></div>
+              <div><dt>Target</dt><dd id="plan-target">—</dd></div>
+            </dl>
+          </div>
+          <div class="plan-intent-card">
+            <p class="section-label">Ordered proposed steps</p>
+            <ol id="plan-proposed-steps" class="plan-step-list">
+              <li>Waiting for the service response.</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <section id="plan-graph-panel" class="card plan-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="section-label">Shared dependency</p>
+            <h2>Direct holding and Aave supply converge on wstETH</h2>
+            <p class="panel-summary">
+              The quantities are derived from the server response. The graph is an explanation surface,
+              not a transaction or reservation view.
+            </p>
+          </div>
+          <span class="status-pill status-pill-neutral">SOURCE-BOUND</span>
+        </div>
+        <div class="plan-dependency-graph" aria-label="Direct holding and Aave supply share one wstETH dependency">
+          <div class="plan-graph-node plan-graph-direct">
+            <span class="plan-graph-kicker">DIRECT HOLDING</span>
+            <strong>wstETH wallet</strong>
+            <span id="plan-direct-quantity" class="plan-graph-quantity">—</span>
+          </div>
+          <div class="plan-graph-link plan-graph-link-direct" aria-hidden="true"><span>same asset</span></div>
+          <div class="plan-graph-node plan-graph-shared">
+            <span class="plan-graph-kicker">SHARED DEPENDENCY</span>
+            <strong>wstETH</strong>
+            <span id="plan-total-quantity" class="plan-graph-quantity">—</span>
+          </div>
+          <div class="plan-graph-node plan-graph-aave">
+            <span class="plan-graph-kicker">AAVE V3 BASE</span>
+            <strong>Supply claim</strong>
+            <span id="plan-aave-quantity" class="plan-graph-quantity">—</span>
+          </div>
+          <div class="plan-graph-link plan-graph-link-aave" aria-hidden="true"><span>same asset</span></div>
+        </div>
+      </section>
+
+      <section id="plan-decision-panel" class="card plan-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="section-label">Original plan diagnostic</p>
+            <h2>Hypothetical projection, separate from authorization replay</h2>
+            <p id="plan-decision-note" class="panel-summary">
+              The service will show whether the full arithmetic projection is complete.
+            </p>
+          </div>
+          <span id="plan-policy-status" class="status-pill status-pill-neutral">PENDING</span>
+        </div>
+        <div class="metric-strip plan-metrics">
+          <div class="metric-item"><dt>Policy</dt><dd id="plan-policy-value">—</dd></div>
+          <div class="metric-item"><dt>Goal</dt><dd id="plan-goal-value">—</dd></div>
+          <div class="metric-item"><dt>Paper eligibility</dt><dd id="plan-paper-value">—</dd></div>
+          <div class="metric-item"><dt>Real transaction</dt><dd id="plan-real-tx-value">—</dd></div>
+        </div>
+        <details id="plan-diagnostics-details" class="plan-disclosure plan-diagnostics-disclosure">
+          <summary>Show hypothetical projection and authorization replay details</summary>
+        <div class="plan-state-grid">
+          <div>
+            <p class="section-label">Diagnostic projection</p>
+            <dl class="plan-detail-list">
+              <div><dt>Status</dt><dd id="plan-diagnostic-status">—</dd></div>
+              <div><dt>Projected total</dt><dd id="plan-diagnostic-total">—</dd></div>
+              <div><dt>Projected Aave</dt><dd id="plan-diagnostic-aave">—</dd></div>
+              <div><dt>Violations</dt><dd id="plan-diagnostic-violations">—</dd></div>
+            </dl>
+          </div>
+          <div>
+            <p class="section-label">Authorization replay</p>
+            <dl class="plan-detail-list">
+              <div><dt>Replay completeness</dt><dd id="plan-replay-completeness">—</dd></div>
+              <div><dt>Final state semantics</dt><dd id="plan-replay-semantics">—</dd></div>
+              <div><dt>Unevaluated steps</dt><dd id="plan-unevaluated-steps">—</dd></div>
+              <div><dt>Blocking predicates</dt><dd id="plan-replay-violations">—</dd></div>
+            </dl>
+          </div>
+        </div>
+        </details>
+      </section>
+
+      <section id="plan-repair-panel" class="card plan-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="section-label">Engine-generated repair</p>
+            <h2>Bounded candidate for operator review</h2>
+            <p id="plan-repair-note" class="panel-summary">
+              A repair is explanatory output only. No reservation exists for this candidate.
+            </p>
+          </div>
+          <span id="plan-repair-status" class="status-pill status-pill-neutral">PENDING</span>
+        </div>
+        <div class="plan-repair-grid">
+          <div>
+            <p class="section-label">Changed steps</p>
+            <ol id="plan-repair-steps" class="plan-step-list">
+              <li>Waiting for the service response.</li>
+            </ol>
+          </div>
+          <div>
+            <p class="section-label">Repair result</p>
+            <dl class="plan-detail-list">
+              <div><dt>Direct</dt><dd id="plan-repair-direct">—</dd></div>
+              <div><dt>Aave</dt><dd id="plan-repair-aave">—</dd></div>
+              <div><dt>Total</dt><dd id="plan-repair-total">—</dd></div>
+              <div><dt>Goal fulfillment</dt><dd id="plan-repair-goal">—</dd></div>
+            </dl>
+            <details id="plan-raw-details" class="plan-inline-disclosure">
+              <summary>Show exact raw quantities</summary>
+              <p id="plan-repair-raw" class="field-note">—</p>
+            </details>
+          </div>
+        </div>
+      </section>
+      </div>
+
+      <details id="plan-secondary-details" class="plan-disclosure plan-secondary-panels">
+        <summary>Show budgets, timeline, provenance and unavailable capabilities</summary>
+      <section id="plan-budget-panel" class="card plan-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="section-label">Policy budget</p>
+            <h2>Caps and exact before / after quantities</h2>
+          </div>
+          <span class="status-pill status-pill-neutral">NO RESERVATION</span>
+        </div>
+        <div class="metric-strip plan-metrics plan-budget-metrics">
+          <div class="metric-item"><dt>Total cap</dt><dd id="plan-total-cap">—</dd></div>
+          <div class="metric-item"><dt>Aave cap</dt><dd id="plan-aave-cap">—</dd></div>
+          <div class="metric-item"><dt>Original replay peak total</dt><dd id="plan-original-peak-total">—</dd></div>
+          <div class="metric-item"><dt>Original replay peak Aave</dt><dd id="plan-original-peak-aave">—</dd></div>
+          <div class="metric-item"><dt>Repaired candidate peak total</dt><dd id="plan-repair-peak-total">—</dd></div>
+          <div class="metric-item"><dt>Repaired candidate peak Aave</dt><dd id="plan-repair-peak-aave">—</dd></div>
+        </div>
+        <p id="plan-budget-note" class="field-note">Active reservation deltas are not available in Task 3.</p>
+      </section>
+
+      <section id="plan-timeline-panel" class="card plan-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="section-label">Review timeline</p>
+            <h2>What was evaluated</h2>
+          </div>
+          <span class="status-pill status-pill-neutral">READ ONLY</span>
+        </div>
+        <ol id="plan-timeline" class="plan-timeline">
+          <li>Waiting for a server-owned source.</li>
+        </ol>
+      </section>
+
+      <section id="plan-what-if-panel" class="card plan-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="section-label">Unavailable boundary</p>
+            <h2>No reservations or runtime what-if in Task 3</h2>
+            <p id="plan-what-if-note" class="panel-summary">
+              This checkpoint does not simulate runtime events, mutate sessions or claim reservation admission.
+            </p>
+          </div>
+          <span class="status-pill status-pill-neutral">UNAVAILABLE</span>
+        </div>
+        <details id="plan-provenance-details" class="plan-disclosure">
+          <summary>Show source provenance and server boundary</summary>
+          <dl class="plan-detail-list plan-provenance-list">
+            <div><dt>Mode</dt><dd id="plan-source-mode">—</dd></div>
+            <div><dt>Qualification</dt><dd id="plan-source-qualification">—</dd></div>
+            <div><dt>Block</dt><dd id="plan-source-block">—</dd></div>
+            <div><dt>Graph hash</dt><dd id="plan-source-hash">—</dd></div>
+            <div><dt>Gaps</dt><dd id="plan-source-gaps">—</dd></div>
+            <div><dt>Boundary</dt><dd id="plan-boundary-status">—</dd></div>
+          </dl>
+        </details>
+      </section>
+      </details>
 
       <section id="exposure-request-panel" class="card exposure-panel">
         <div class="panel-heading">
@@ -204,7 +506,7 @@
       </section>
 
       <div class="exposure-operation-grid">
-        <section id="exposure-permit-panel" class="card exposure-panel">
+      <section id="exposure-permit-panel" class="card exposure-panel">
           <div class="panel-heading">
             <div>
               <p class="section-label">Permit boundary</p>
@@ -265,9 +567,9 @@
 
       <footer class="exposure-footer">
         <p>
-          This public screen demonstrates source attribution, a policy-based signal and
-          a paper executor. It does not provide investment advice, USD valuation or a
-          live transaction submission.
+          This public screen demonstrates source attribution, policy-based plan review
+          and bounded repair. It does not provide investment advice, USD valuation or
+          a live transaction submission.
         </p>
       </footer>
     </main>

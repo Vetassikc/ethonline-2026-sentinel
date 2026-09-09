@@ -87,11 +87,12 @@ export type OpenAIExposureClientResult =
       arguments: ExposureRequest;
     };
     tool_result: SanitizedExposureToolResult;
+    application_generated_summary: string;
     model_response: string;
   }
   | {
     status: "blocked";
-    client: "openai_responses_api";
+    client: ExternalAIClientName;
     code:
       | "missing_configuration"
       | "invalid_configuration"
@@ -250,6 +251,37 @@ function sanitizeToolResult(
       read_only: true,
     },
   };
+}
+
+export function buildApplicationGeneratedSummary(
+  toolResult: SanitizedExposureToolResult,
+): string {
+  const { result } = toolResult;
+  const policy = result.policy;
+  const source = result.source;
+  const unit = toolResult.request.unit;
+  const block = source?.block === null || source?.block === undefined
+    ? "unknown"
+    : String(source.block);
+  const paths = source?.path_kinds.length
+    ? source.path_kinds.join(", ")
+    : "none reported";
+  const gaps = source?.gaps.length
+    ? source.gaps.join(", ")
+    : "none reported";
+  const reasons = policy.reason_codes.length
+    ? policy.reason_codes.join(", ")
+    : "none";
+
+  return [
+    "Application-generated summary (derived from validated tool output; not completed model prose).",
+    `Source: ${source?.source_status ?? "unknown"}; mode: ${result.mode ?? "unknown"}; block: ${block}.`,
+    `Policy: ${policy.verdict ?? "unknown"}; requested ${policy.requested_units ?? "unknown"} ${unit}; allowed ${policy.allowed_units ?? "unknown"} ${unit}.`,
+    `Exposure: gross ${policy.gross_exposure_units ?? "unknown"} ${unit}; headroom ${policy.headroom_units ?? "unknown"} ${unit}; binding constraint ${policy.binding_constraint ?? "unknown"}; reason codes ${reasons}.`,
+    `Paths: ${paths}.`,
+    `Visible gaps: ${gaps}.`,
+    "Authority: read-only; account, policy, provider, signing and execution remain outside model control.",
+  ].join("\n");
 }
 
 async function callResponsesApi(
@@ -424,6 +456,7 @@ export async function runOpenAIExposureClient(
       arguments: validation.request,
     },
     tool_result: toolResult,
+    application_generated_summary: buildApplicationGeneratedSummary(toolResult),
     model_response: modelResponse,
   };
 }

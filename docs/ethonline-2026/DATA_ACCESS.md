@@ -72,4 +72,9 @@ If the selected indexer cannot satisfy the freshness bound, make that visible. D
 
 Use one existing AI client with a restricted project CLI/tool. The model proposes an allowlisted query plan, the adapter validates arguments, and the policy uses actual results. Log model/tool steps without secrets. [The Graph MCP introduction](https://thegraph.com/docs/en/subgraphs/tooling/subgraph-mcp/introduction/) is an alternative integration path, not an extra mandatory component.
 
-There is no active external AI-to-Graph runtime yet. The live Graph adapter and `position_evidence.v1` normalization layer remain read-only. The qualified wstETH path is a deterministic source/policy boundary; USD valuation and any external model invocation remain explicit limitations.
+The repository records one bounded external model-to-read-only-tool trace for
+the exposure graph. It is not a continuously deployed external AI-to-Graph
+runtime or an MCP server. The live Graph adapter and `position_evidence.v1`
+normalization layer remain read-only. The qualified wstETH path is a
+deterministic source/policy boundary; USD valuation, durable runtime state and
+provider-stable repeatability remain explicit limitations.

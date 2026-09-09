@@ -57,9 +57,11 @@ sanitized policy and source fields for a short explanation. The client makes
 at most two external AI requests, one local tool call and no retries. It never
 imports signing or paper-execution routes.
 
-A live external call is acceptance evidence only if it returns the actual model
-tool call, the validated source-backed result and the bounded explanation.
-Each attempt requires founder approval because API usage may incur charges.
+A live external call is trace evidence only if it returns the actual model tool
+call and the validated source-backed result. The model explanation is recorded
+separately; if it is incomplete, the application-generated summary is the
+human-readable fallback and must be labeled as such. Each attempt requires
+founder approval because API usage may incur charges.
 Setup is local only:
 
 1. Create or select the key for the provider you will use: [OpenAI API
@@ -95,9 +97,12 @@ node --env-file=.env.local scripts/openai-exposure-client.ts \
 
 Expected successful output contains `status: "ok"`, a provider-specific client
 name, `model_tool_call.name: "sentinel_exposure_graph"`, a sanitized
-`tool_result` with source/policy fields, and `model_response`. A missing key
-returns a sanitized `missing_configuration` result; a live Graph/RPC failure
-remains a non-authorizing tool result and must not be rewritten as success.
+`tool_result` with source/policy fields,
+`application_generated_summary`, and `model_response`. The application summary
+is deterministic, derived from validated tool output and explicitly labeled as
+not completed model prose. A missing key returns a sanitized
+`missing_configuration` result; a live Graph/RPC failure remains a
+non-authorizing tool result and must not be rewritten as success.
 
 On September 8, 2026, one bounded attempt with the local `gpt-5` setting
 returned sanitized `status: "blocked"`,
@@ -119,10 +124,11 @@ A final bounded variant used the OpenRouter model `openai/gpt-5` with a
 process-local `OPENROUTER_MODEL` override. It returned `status: "ok"`, the
 actual `sentinel_exposure_graph` tool call, validated arguments, a live
 source-backed `ALLOW` result for `0.500000000000000000 wstETH`, and a bounded
-model explanation containing the source/policy fields. The captured prose
-ended mid-sentence at the output limit, so explanation completeness is a
-separate limitation; the tool/source chain itself is recorded as demonstrated.
-No signing or execution occurred.
+model explanation containing the source/policy fields. The output also contains
+an `application_generated_summary` rendered only from the validated tool
+result. The captured model prose ended mid-sentence at the output limit, so
+explanation completeness is a separate limitation; the tool/source chain
+itself is recorded as demonstrated. No signing or execution occurred.
 
 Google AI Studio creates a separate Gemini API key, not a ChatGPT/OpenAI key.
 The direct Google AI Studio OpenAI-compatibility endpoint is intentionally not

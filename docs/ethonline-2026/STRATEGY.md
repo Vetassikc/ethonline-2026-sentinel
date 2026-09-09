@@ -70,17 +70,19 @@ HTTPS and prove Base Mainnet chain ID `8453` before a read is accepted.
 `sentinel_exposure_graph` is a useful restricted local tool contract: the model
 or caller may provide only the versioned purchase shape, while the server
 chooses the account, chain, source, policy and signer. The CLI and schema do
-not establish a genuine external AI/MCP integration. That claim requires a
-separate recorded natural-language trace and remains an open gate.
+not by themselves establish an external integration. A separate recorded
+OpenRouter `openai/gpt-5` trace now demonstrates a genuine natural-language →
+model tool call → validated live result chain. The captured model prose was
+truncated, so the demo uses a deterministic application-generated summary and
+does not claim complete model explanation or an MCP server.
 
 ## Remaining gates
 
-1. If needed, capture a provider-stable successful paper-executor refresh
-   without exposing account or balance data. Live browser evaluation and permit
-   verification now pass with a server-configured HTTPS Base RPC, while the
-   fresh executor has correctly failed closed on source/headroom changes.
-2. Decide whether the event value justifies configuring a real external AI/tool
-   client. If so, record the exact request, selected tool call and explanation.
+1. Preserve the unexplained one-unit historical-read mismatch and the
+   fail-closed source/headroom checks; do not add tolerance or bypass logic.
+2. Use the bounded demo script and application-generated summary to prepare
+   the public video; no further provider/model call is needed for the event
+   submission draft.
 3. Have the founder review the token-unit policy, live outputs, limitations,
    dependency advisories and media before any push, deployment or submission.
 

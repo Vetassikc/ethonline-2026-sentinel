@@ -1,37 +1,105 @@
 # Demo and acceptance — Sentinel Exposure Graph
 
-Target duration: approximately three minutes. The primary screen is
-`/exposure-graph`; the local tool and API routes are supporting inspection
-surfaces. Use a configured live source only when its provider is available.
-Never hide a live failure behind a fixture.
+Target duration: 2:30–3:00. The primary screen is `/exposure-graph`; the
+external model trace and paper-execution evidence are supporting, separately
+recorded surfaces. Do not edit separate runs together as if they were one
+continuous live execution.
 
-## Storyboard
+## Coherent recording sequence
 
-1. Open `/exposure-graph`. Show the exact request
-   `2.000000000000000000 wstETH`, the server-owned cap and the
-   `LIVE`/`REPLAY`/`DEMO SIGNER`/`PAPER EXECUTOR` labels.
-2. Evaluate the request. In a live run, show The Graph indexed block and the
-   same-block Base validation. The two paths converge on one wstETH asset;
-   the policy derives gross exposure, headroom and an allowed amount in
-   wstETH units. If the public RPC returns `429`, show the non-authorizing
-   error and stop; do not refresh into a fixture silently.
-3. Click the direct and Aave paths. Show each source field or contract method,
-   block, units, transformation and explicit gap state. Explain that the
-   Graph `UserReserve` relation is required and RPC validates/normalizes it.
-4. Issue the demo-only permit for the server-selected bounded amount. Show
-   its graph hash, policy version, snapshot block, expiry and audience without
-   exposing an account or signature in a public capture. Pure verification
-   does not consume the nonce.
-5. Run paper execution. The executor obtains a fresh server-owned evaluation,
-   checks the relevant conditions and consumes the nonce once.
-6. Run the labeled replay. It changes the snapshot/headroom and returns
-   `REPLAY: DENY`. Local tests separately demonstrate that a valid old
-   signature can remain verifiable while current paper execution rejects the
-   changed condition.
+### 0:00–0:20 — Problem and boundary
 
-The browser rehearsal completed this sequence against synthetic fixture data.
-That result is a UI rehearsal, not a live account or sponsor-qualification
-claim. The live source manifest and CLI acceptance must be reported separately.
+Say:
+
+> An agent can see a direct wstETH holding and an Aave supply position as two
+> rows, while both are claims on the same wstETH dependency. Sentinel turns
+> that shared dependency into a bounded, source-attributed policy decision
+> before a paper permit is accepted. This demo is denominated in wstETH, not
+> USD, and does not submit a wallet transaction.
+
+### 0:20–0:55 — Live shared-dependency graph
+
+Open `/exposure-graph` with the configured live source and show the `LIVE`
+label. Point to the direct holding path and the Aave `UserReserve`/supply path
+converging on one wstETH asset. Show the server-owned cap of
+`1.000000000000000000 wstETH`, then read the displayed gross exposure,
+headroom and allowed amount from that same evaluation. Do not hardcode a new
+number if the live snapshot has changed.
+
+Explain that The Graph supplies the account-position relation and indexed
+block, while the same-block Base read validates and normalizes the Aave path.
+Keep `usd_valuation_unavailable` and `stale_oracle_price` visible.
+
+For the implemented local planner rehearsal, the same route starts with an
+explicit `FIXTURE` template. It is editable: change the exact target or any
+ordered step, then press `Evaluate plan` and show the resulting
+`POST /api/exposure/plan/validate` result. The source selector offers a separate
+qualified-live path; if that source is unavailable, keep the error visible and
+do not substitute the fixture.
+
+### 0:55–1:25 — Genuine model tool trace, separate live run
+
+Show the sanitized output from the recorded OpenRouter `openai/gpt-5` run in
+[EXTERNAL_AI_TRACE.md](./EXTERNAL_AI_TRACE.md). The important evidence is:
+
+1. natural-language request;
+2. actual model-selected `sentinel_exposure_graph` call;
+3. validated `sentinel-exposure-buy.v1` arguments for `0.5 wstETH`;
+4. live tool result: source `ok`, block `51033233`, policy `ALLOW`.
+
+Show `application_generated_summary` and say explicitly:
+
+> This is an application-generated summary derived from validated tool output,
+> not completed model prose. The captured model explanation stopped at the
+> bounded output limit; the tool/source chain is demonstrated, while prose
+> completeness is not.
+
+Keep the account, cap, provider URL, signing and execution authority outside
+the model boundary. Do not show the API key or raw provider response.
+
+### 1:25–2:15 — Permit and paper execution, another separate live run
+
+Switch to the separately recorded live paper-executor evidence. Show a fresh
+`0.500000000000000000 wstETH` evaluation, permit verification with the
+executable checks, `PAPER_EXECUTED`, and then the second use of the same permit
+returning `NONCE_ALREADY_USED` with HTTP `409`.
+
+Narrate that this is paper-only evidence from a separate run; it is not the
+same request or continuous execution as the external model trace.
+
+### 2:15–2:45 — Negatives and limitations
+
+Show the boundary rejection for
+`10.000000000000000001 wstETH` as a separate invalid-input case. If showing
+changed-condition rejection, label it `FIXTURE`: a valid old permit is
+rejected as `CURRENT_HEADROOM_INSUFFICIENT` when the refreshed fixture has no
+headroom. The fixture proves the authorization-drift branch; it is not live
+Aave evidence.
+
+Close with the unresolved one-raw-unit Aave mismatch, explicit USD/oracle
+gaps, in-memory paper state and the absence of production/on-chain execution.
+
+The browser rehearsal is `FIXTURE`/`REPLAY` synthetic UI evidence. The live
+Graph/RPC snapshot, external model trace and paper-executor run are separate
+recorded evidence items and must retain those labels in the video and notes.
+
+## Reproduction surfaces
+
+From the repository root:
+
+```sh
+npm test
+printf '%s\n' '{"schema_version":"sentinel-exposure-buy.v1","action":"BUY_EXPOSURE","asset":"wstETH","unit":"wstETH","requested_units":"0.500000000000000000"}' | node --env-file=.env.local scripts/exposure-tool.ts
+node --env-file=.env.local scripts/openai-exposure-client.ts \
+  "Check whether a bounded 0.5 wstETH exposure purchase is allowed."
+```
+
+The external command requires a founder-configured provider key and explicit
+approval for any paid request. The recorded run used OpenRouter with
+`openai/gpt-5`; do not retry it automatically. The command output must include
+the actual model tool call, validated `tool_result` and the deterministic
+`application_generated_summary`. A partial `model_response` must not be
+rewritten or presented as complete prose.
 
 ## Acceptance ledger
 

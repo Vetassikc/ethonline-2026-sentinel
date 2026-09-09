@@ -6,6 +6,7 @@ import {
   runExposureGraphTool,
 } from "../app/exposure-tool.ts";
 import {
+  buildApplicationGeneratedSummary,
   OPENAI_RESPONSES_ENDPOINT,
   OPENROUTER_RESPONSES_ENDPOINT,
   runOpenAIExposureClient,
@@ -105,6 +106,14 @@ test("OpenAI Responses client performs a model-selected restricted tool round tr
   assert.deepEqual(toolInput, REQUEST);
   assert.equal(result.tool_result.result.source?.block, 123);
   assert.deepEqual(result.tool_result.result.source?.path_kinds, ["direct_holding", "aave_supply"]);
+  assert.equal(
+    result.application_generated_summary,
+    buildApplicationGeneratedSummary(result.tool_result),
+  );
+  assert.match(result.application_generated_summary, /^Application-generated summary/);
+  assert.match(result.application_generated_summary, /not completed model prose/);
+  assert.match(result.application_generated_summary, /Policy: ALLOW/);
+  assert.match(result.application_generated_summary, /Visible gaps: usd_valuation_unavailable/);
   assert.equal(result.model_response, "The source-backed policy allows the bounded request.");
   assert.equal(requests.length, 2);
   assert.equal(requests[0]!.body.store, false);
