@@ -634,20 +634,22 @@ wallet execution, production session security or Task 5 runtime what-if.
 - Consumes: base evaluation reference, plan/reservation maps, graph provenance, and plan-bound permit metadata.
 - Produces: buildExposureDependencyImpact(), POST /api/exposure/what-if, ExposureWhatIfScenario, and UI impact paths.
 
-- [ ] **Step 1: Write independent impact tests.**
+- [x] **Step 1: Write independent impact tests.**
 
-Test that an Aave evidence outage blocks the total exposure predicate, affects both Aave-touching and direct-only plans that rely on that predicate, marks accepted reservations for re-evaluation/invalidation, and leaves the original live graph hash/block/policy untouched. Test that unrelated metadata/block changes do not mark an otherwise valid plan affected. Assert that the fork copies reservation/permit checks, has a distinct session ID, and cannot mutate or execute the original session.
+Test that an Aave evidence outage blocks the total exposure predicate, affects both Aave-touching and direct-only plans that rely on that predicate, marks accepted reservations for re-evaluation/invalidation, and leaves the original live graph hash/block/policy untouched. Test that unrelated metadata/block changes do not mark an otherwise valid plan affected. Assert that the fork copies reservation references and only actually recorded permit-check references, has a distinct session ID, and cannot mutate or execute the original session.
 
-- [ ] **Step 2: Implement the three dependency layers.**
+- [x] **Step 2: Implement the three dependency layers.**
 
 Use economic_exposure, data_evidence and authorization nodes/edges. Each edge must point to existing evidence or state modeled/hypothetical. Create the explicit path UserReserve -> total exposure cap -> plan -> reservation -> permit for the what-if overlay.
 
-- [ ] **Step 3: Implement the allowlisted overlay route.**
+- [x] **Step 3: Implement the allowlisted overlay route.**
 
 Accept exactly `{evaluation_ref, scenario}` where scenario is
 `aave_evidence_unavailable`. Create a distinct `mode: "what_if"` simulation
-session, copy reservation and simulated permit checks, and return its opaque
-session ID. Run the same read-only condition evaluator against the original
+session, copy reservation references and any actually recorded permit-check
+references, and return its opaque session ID. An accepted reservation alone
+must not generate a permit-check ID or historical check status. Run the same
+read-only condition evaluator against the original
 and forked contexts and return the specific changed predicate, original
 status/reason, forked status/reason, affected plans and causal path. For the
 canonical fixture, `total_exposure_cap` changes from
@@ -661,15 +663,67 @@ to use the simulation session for execution returns
 does not replace the causal condition comparison. The live route remains the
 only operator action boundary.
 
-- [ ] **Step 4: Render the original snapshot and overlay side by side.**
+- [x] **Step 4: Render the original snapshot and overlay side by side.**
 
-The UI must show LIVE SOURCE for the base snapshot and WHAT-IF for the overlay, with a visible statement that a cryptographically valid permit can still be rejected by the cooperating executor. Add keyboard-accessible path details and a no-data/error state.
+The UI preserves the actual base provenance (`FIXTURE` remains `FIXTURE`, and
+`LIVE_SOURCE` remains `LIVE SOURCE`) and labels the overlay `WHAT-IF /
+SIMULATION`, with a visible statement that a cryptographically valid permit
+can still be rejected by the cooperating executor. Keyboard-accessible path
+details, loading/error states and stale-result invalidation are included.
 
-- [ ] **Step 5: Run focused tests and commit.**
+### Bounded Proposal A frontend checkpoint
 
-Run: node --test api/tests/exposure-impact.test.ts api/tests/exposure-ui.test.ts
+- [x] Implement the revised decision-first route composition without replacing
+  the existing application. The header exposes active provenance, the shared
+  dependency graph sits beside the decision summary, and the comparison board
+  renders requested and repaired quantities from the service response.
+- [x] Keep original snapshot, complete diagnostic projection, projected repair
+  (`Candidate · not executed`) and what-if states distinct. The canonical route
+  displays original `.40/.40/.80`, diagnostic `1.10/.70`, and repaired
+  `.50/.50/1.00`, with candidate policy, partial goal status and execution
+  authority shown independently.
+- [x] Preserve editable plan controls, all three canonical cases, explicit
+  fixture/live source selection, exact decimal inputs, source-failure recovery,
+  stale-response protection and the separate legacy permit/replay section.
+- [x] Verify the actual route at 390, 768, 1024, 1280 and 1440 pixels, with
+  keyboard submission, Back/refresh, what-if visibility/recovery, no horizontal
+  overflow and sanitized captures in `output/playwright/`.
 
-Expected: the overlay and stale-state tests pass without changing any live source adapter arithmetic.
+This is a frontend review checkpoint only. It adds no reservation UI, signing,
+execution, runtime what-if, provider change or Task 6 planner integration. The
+implementation and captures remain uncommitted until the founder review gate.
+
+### Bounded repair-table correspondence correction
+
+- [x] Use server-provided `repair.changes.step_index` to map requested rows to
+  the repaired candidate subset; do not pair candidate steps by action kind or
+  compacted array position.
+- [x] Render removed zero-quantity steps as `Removed`, distinguish them from
+  `No candidate`, and retain repeated action kinds as separate original rows.
+- [x] Add deterministic regressions and verify the actual route table against
+  the expanded candidate list for the mixed supply/withdrawal case.
+
+This remains a frontend-only correction. It changes no engine, repair
+arithmetic, authorization boundary, reservation, signing, execution or Task 6
+scope. The correction and browser evidence remain uncommitted for review.
+
+- [ ] **Step 5: Commit after the founder review gate.**
+
+The implementation and verification are complete for this checkpoint, but the
+Task 5 diff must remain uncommitted for review as requested. Run:
+
+~~~sh
+node --test api/tests/exposure-impact.test.ts api/tests/exposure-ui.test.ts
+npm test
+~~~
+
+Observed after the corrective pass: `7/7` focused impact tests, `23/23`
+affected Task 5/UI/lifecycle checks and `276/276` full tests pass without
+changing live source adapter arithmetic. The recovery implementation remains
+in commit `033c751`; the Task 5 diff, revised Proposal A mockup and sanitized
+captures are uncommitted. The what-if permit status is `not_recorded` when no
+receipt is retained; it does not claim that issuance/checking never happened.
+Do not claim Task 5 is committed until the review gate passes.
 
 Proposed commit: feat: explain dependency impact and what-if state
 
@@ -831,7 +885,7 @@ docs: record plan coordination acceptance evidence
 - [x] Reservation admission is atomic, idempotent and separate from read-only evaluation.
 - [x] Withdrawals do not free capacity before paper execution.
 - [x] Task 4A runtime generations isolate internal reservations without changing the legacy permit contract.
-- [ ] The Task 5 what-if overlay preserves the original snapshot and does not fabricate a live incident.
+- [x] The Task 5 what-if overlay preserves the original snapshot and does not fabricate a live incident.
 - [ ] The Task 6 read-only planner tool is separate from the legacy external-AI trace and cannot mutate authorization state.
 - [x] The mockup checkpoint covers desktop and narrow layouts with concrete fixture values and no clipped decisions.
 - [x] The plan does not claim global optimality, durable coordination, production readiness or on-chain execution.

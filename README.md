@@ -183,17 +183,30 @@ Reference visuals already in the repo:
   the repository.
 - The configured Graph source and same-block Base reads qualify one narrow
   wstETH shared-dependency case; the source manifest records its gaps.
-- `GET /exposure-graph` exposes the source-attributed graph plus the editable
-  Task 3 read-only plan/repair console. New plan results expose exact cap
-  arithmetic, hypothetical diagnostic projection and bounded repair without
-  reservation, signing, execution or runtime what-if controls. The legacy
-  single-purchase demo remains visually separate and keeps its own bounded
-  permit/replay enablement:
+- `GET /exposure-graph` exposes the source-attributed graph, the editable
+  read-only plan/repair console and the bounded dependency-impact panel. The
+  revised Proposal A layout puts the shared graph beside the decision summary,
+  renders requested-versus-repaired quantities from the service response and
+  keeps the legacy single-purchase flow visually separate. New plan results
+  expose exact cap arithmetic, hypothetical diagnostic projection and bounded
+  repair without reservation, signing or execution controls. The dependency-
+  impact panel supports only the read-only
+  `aave_evidence_unavailable` scenario; it never creates a live incident or
+  runtime authorization. The legacy single-purchase demo remains visually
+  separate and keeps its own bounded permit/replay enablement:
   `GET /api/exposure/plan/config`,
   `GET /api/exposure/plan/source/fixture`,
   `GET /api/exposure/plan/demo/repair_over_limit`,
   `GET /api/exposure/plan/demo/restore_aave_cap`, and
-  `POST /api/exposure/plan/validate`.
+  `POST /api/exposure/plan/validate`, plus
+  `POST /api/exposure/what-if` with exactly
+  `{"evaluation_ref":"exposure_<32 hex>","scenario":"aave_evidence_unavailable"}`.
+- If the what-if analysis has no retained permit-check receipt, it returns
+  `original.permit_status: "not_recorded"`, `permit_check_id: null` and an empty
+  copied-check list. The explanation is "No permit-check evidence is recorded
+  in this analysis; issuance/check history is not established." This does not
+  claim that a permit was never issued or checked outside the retained
+  evidence.
 - The local `sentinel_exposure_graph` tool accepts one exact read-only purchase
   shape. A separate recorded OpenRouter `openai/gpt-5` run demonstrates a
   genuine external model-selected call to that tool; the local CLI by itself
@@ -244,6 +257,24 @@ Use these as the primary submission references:
   [output/playwright/sentinel-task3-desktop.png](output/playwright/sentinel-task3-desktop.png)
 - Implemented Task 3 mobile capture:
   [output/playwright/sentinel-task3-mobile.png](output/playwright/sentinel-task3-mobile.png)
+- Implemented Task 5 desktop capture:
+  [output/playwright/sentinel-task5-what-if-desktop.png](output/playwright/sentinel-task5-what-if-desktop.png)
+- Implemented Task 5 mobile capture:
+  [output/playwright/sentinel-task5-what-if-mobile.png](output/playwright/sentinel-task5-what-if-mobile.png)
+- Recommended Proposal A full-width preview:
+  [docs/superpowers/mockups/sentinel-exposure-graph-visual-proposals.html](docs/superpowers/mockups/sentinel-exposure-graph-visual-proposals.html)
+- Proposal A browser captures at 1024px, 1440px and 390px:
+  [sentinel-proposals-corrective-1024.png](output/playwright/sentinel-proposals-corrective-1024.png),
+  [sentinel-proposals-corrective-1440.png](output/playwright/sentinel-proposals-corrective-1440.png),
+  [sentinel-proposals-corrective-390.png](output/playwright/sentinel-proposals-corrective-390.png)
+- Implemented Proposal A route captures at 390px, 768px, 1024px, 1280px and
+  1440px:
+  [390](output/playwright/sentinel-exposure-graph-proposal-a-390.png),
+  [768](output/playwright/sentinel-exposure-graph-proposal-a-768.png),
+  [1024](output/playwright/sentinel-exposure-graph-proposal-a-1024.png),
+  [1280](output/playwright/sentinel-exposure-graph-proposal-a-1280.png),
+  [1440](output/playwright/sentinel-exposure-graph-proposal-a-1440.png), and
+  [mobile what-if](output/playwright/sentinel-exposure-graph-proposal-a-390-what-if.png)
 
 For judge narration, the most reusable proof object remains the validation
 artifact. For execution-rail narration, the strongest bridge is the Kraken

@@ -494,6 +494,8 @@ export type ExposureSimulationSession = {
   base_evaluation_ref: string;
   base_graph_hash: string;
   reservations_copy: string[];
+  // Only references to permit checks actually recorded by the authorization
+  // runtime may appear here; a reservation ID is not a permit-check receipt.
   simulated_permits_copy: string[];
   revision: number;
 };
@@ -502,9 +504,11 @@ export type ExposureSimulationSession = {
 `POST /api/exposure/what-if` accepts exactly
 `{ "evaluation_ref": "exposure_<32 hex>", "scenario":
 "aave_evidence_unavailable" }` and creates a separate immutable simulation
-session/fork over a stored evaluation. The fork copies reservations and
-simulated permit checks for analysis only; it never mutates, releases or
-re-accepts anything in the original session. It marks the Aave evidence
+session/fork over a stored evaluation. The fork copies reservations and any
+permit-check references actually recorded by the authorization runtime for
+analysis only; an accepted reservation without an issued or verified permit
+produces no permit-check reference. It never mutates, releases or re-accepts
+anything in the original session. It marks the Aave evidence
 predicate unavailable, leaves the original block/hash and policy result
 intact, and returns:
 
@@ -538,6 +542,38 @@ A direct-only plan is still affected because the total exposure cap depends on
 the Aave evidence path. The overlay is never presented as a live incident, and
 an EIP-712 signature may remain cryptographically valid while the cooperating
 executor rejects it for current conditions.
+
+### Task 5 checkpoint semantics
+
+The implemented boundary is read-only and process-local. It accepts exactly
+the stored evaluation reference and the allowlisted
+`aave_evidence_unavailable` scenario. The service reconstructs the qualified
+account state from the server-owned stored evaluation without fetching a
+provider or substituting fixture evidence after a source failure. The base
+provenance is retained verbatim: a `FIXTURE` base remains `FIXTURE`, while the
+fork is displayed as `WHAT-IF / SIMULATION`.
+
+The original and hypothetical conditions use the same predicate evaluator.
+The hypothetical context preserves direct holdings and cap configuration but
+marks the Aave evidence and dependent total-exposure predicate unavailable.
+Affected Aave-touching and direct-only plan records, copied reservation
+references and any recorded permit-check references are analysis metadata
+only. An accepted reservation alone does not establish that a permit was
+issued or checked. Its permit edge remains hypothetical and the response
+reports `not_recorded`; this does not establish whether issuance or checking
+occurred outside the retained evidence. An affected reservation is reported as
+`would_require_re_evaluation` and `actual_state_changed: false`;
+the live reservation, paper overlay, operator session and nonce set are not
+mutated. A simulation permit or execution attempt returns
+`SIMULATION_NOT_EXECUTABLE` at the existing authorization boundary.
+
+The UI renders the two snapshots side by side and exposes the causal path
+`Aave evidence -> total-exposure predicate -> plan -> reservation -> permit`
+through native keyboard-accessible details. Exact decimal/raw strings are
+returned by the service and no credentials, account identifiers or provider
+URLs are included in the impact response. This checkpoint does not add
+reservations, signing, execution, live incident simulation, external planner
+integration or Task 6 behavior.
 
 ## Shared budget and reservation lifecycle
 

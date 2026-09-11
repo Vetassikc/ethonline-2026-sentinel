@@ -130,11 +130,22 @@ from validated output because the captured model prose was truncated. The
 browser sends only bounded requests to server routes and never receives Graph
 credentials or arbitrary provider URLs.
 
-`/exposure-graph` presents the request/operator limit, two graph paths,
-clickable provenance, decision arithmetic, demo permit, signature checks,
-paper execution and explicitly labeled replay. `LIVE`, `FIXTURE` and `REPLAY`
-are separate states. The browser smoke that exercises the full positive flow
-uses synthetic fixture data and is not presented as current live evidence.
+`/exposure-graph` presents the request/operator limit, editable plan/repair
+review, two graph paths, clickable provenance, decision arithmetic, the
+read-only `aave_evidence_unavailable` dependency-impact comparison, demo
+permit, signature checks, paper execution and explicitly labeled replay.
+`LIVE`, `FIXTURE`, `REPLAY` and `WHAT-IF / SIMULATION` are separate states. The
+what-if side is a non-authorizing analysis fork: it preserves the original
+provenance and state, reports the causal Aave-evidence dependency, and does not
+invalidate or execute the original context. Browser captures use synthetic
+fixture data and are not presented as current live evidence.
+
+When the runtime has not retained a permit-check receipt, the analysis reports
+`original.permit_status: "not_recorded"`, `permit_check_id: null` and no
+copied checks.
+It explains that no permit-check evidence is recorded in the analysis and that
+issuance/check history is not established; missing history is not treated as
+proof that issuance or checking never occurred.
 
 ## Non-functional requirements
 

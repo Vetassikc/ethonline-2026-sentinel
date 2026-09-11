@@ -20,7 +20,7 @@ These routes are historical baseline surfaces and are kept regression-covered.
 
 | Surface | Boundary |
 | --- | --- |
-| `GET /exposure-graph` | Judge-readable request, graph, policy, permit, paper and replay screen |
+| `GET /exposure-graph` | Judge-readable request, graph, plan/repair, dependency-impact, permit, paper and replay screen |
 | `GET /api/exposure/config` | Server-owned supported action, cap, TTL and source metadata; no credential or raw RPC URL |
 | `sentinel_exposure_graph` | Local read-only exact-schema tool around the same evaluation service |
 | `npm run --silent exposure:tool -- --describe` | Prints the restricted tool schema without contacting providers |
@@ -39,6 +39,9 @@ invocation.
 | `POST /api/exposure/verify` | Exact request and signed permit | Pure signature/binding/expiry/amount verification; does not consume a nonce |
 | `POST /api/exposure/paper-execute` | Exact request and signed permit | Fresh server-side evaluation, condition check and one-use paper execution |
 | `POST /api/exposure/replay` | `evaluation_ref` only | Explicit `REPLAY` denial with changed block/hash/headroom; never calls a provider |
+| `GET /api/exposure/plan/source/fixture` | No caller-controlled source or account | Short-lived server-issued fixture reference for editable plan review |
+| `POST /api/exposure/plan/validate` | Exact `evaluation_ref` and versioned plan | Read-only plan evaluation, diagnostic projection and bounded repair |
+| `POST /api/exposure/what-if` | Exactly `evaluation_ref` and `scenario: aave_evidence_unavailable` | Read-only dependency-impact fork; simulation execution remains `SIMULATION_NOT_EXECUTABLE` |
 
 Request bodies are bounded and reject unknown fields, arbitrary subjects,
 arbitrary URLs, policy overrides and unsupported assets. A browser-supplied
@@ -71,6 +74,8 @@ workflow and must not be described as USD-qualified authorization.
 - `api/app/exposure-policy.ts` — exact wstETH-unit accounting and cap decision.
 - `api/app/exposure-request.ts` — request schema and bounds.
 - `api/app/exposure-service.ts` — server-owned evaluation and TTL references.
+- `api/app/exposure-plan-engine.ts` / `api/app/exposure-plan-service.ts` — exact plan accounting and read-only plan review.
+- `api/app/exposure-impact.ts` — allowlisted dependency-impact comparison and simulation metadata.
 - `api/app/exposure-permit.ts` — demo EIP-712 signing and pure verification.
 - `api/app/condition-check.ts` — fresh-condition paper executor boundary.
 - `api/app/exposure-tool.ts` / `scripts/exposure-tool.ts` — restricted read-only tool.

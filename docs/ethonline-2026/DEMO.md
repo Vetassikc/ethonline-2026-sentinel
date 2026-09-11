@@ -37,6 +37,15 @@ ordered step, then press `Evaluate plan` and show the resulting
 qualified-live path; if that source is unavailable, keep the error visible and
 do not substitute the fixture.
 
+The implemented route uses the revised Proposal A composition. For a judge-
+readable local rehearsal, keep the opening `ACTIVE PROVENANCE · FIXTURE` label
+visible, then show the decision summary, the `Requested → repaired` table and
+the two state cards before opening technical details. The canonical values are
+server-rendered: original `.40/.40/.80`, diagnostic `1.10/.70`, and repaired
+`.50/.50/1.00` with `Candidate · not executed`. On mobile, the decision and
+comparison appear before the editable plan and graph. The what-if is a
+separate final screen state based on the original fixture, not on the repair.
+
 ### 0:55–1:25 — Genuine model tool trace, separate live run
 
 Show the sanitized output from the recorded OpenRouter `openai/gpt-5` run in
@@ -82,6 +91,11 @@ gaps, in-memory paper state and the absence of production/on-chain execution.
 The browser rehearsal is `FIXTURE`/`REPLAY` synthetic UI evidence. The live
 Graph/RPC snapshot, external model trace and paper-executor run are separate
 recorded evidence items and must retain those labels in the video and notes.
+
+The current frontend checkpoint has sanitized route captures at 390, 768,
+1024, 1280 and 1440 pixels under `output/playwright/`; these are local browser
+evidence only and do not establish deployment, production readiness or live
+source qualification.
 
 ## Reproduction surfaces
 

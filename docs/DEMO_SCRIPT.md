@@ -34,6 +34,21 @@ Point to the source status, common block and visible
 `usd_valuation_unavailable` / `stale_oracle_price` gaps. Do not invent USD
 values.
 
+For the local frontend rehearsal, keep the explicit `FIXTURE` provenance label
+visible. The revised Proposal A route then puts the decision summary beside
+the shared graph and renders `Requested → repaired` from the service response:
+the original diagnostic is total `1.10` / Aave `0.70`, while the projected
+candidate is direct/Aave `0.50` / `0.50` and total `1.00`, marked
+`Candidate · not executed`. Policy `PASS`, goal `PARTIAL` and execution
+authority remain separate. This synthetic route rehearsal is not a live
+account snapshot.
+
+On mobile, show the decision and comparison first, then the editable plan and
+graph. Keep the legacy single-purchase section separate. If the source
+selector's qualified-live request fails, show `Live source blocked` and
+`No fixture was substituted after live-source failure`; do not silently reuse
+the fixture.
+
 ## 0:55–1:25 — External model/tool evidence
 
 Show the sanitized output of the recorded OpenRouter `openai/gpt-5` run.

@@ -1,12 +1,13 @@
-# Status — September 9, 2026
+# Status — September 11, 2026
 
 ## FACT — verified now
 
 - The public repository is isolated on `ethonline-2026/position-evidence`; the
   historical upstream tree was not rewritten. The reviewed Task 3/Task 4A
   baseline is published as commit `aa95f40`; the Task 4B baseline is published
-  as `4e67771` on the explicit `ethonline` remote. This correction checkpoint
-  is limited to expiry, provenance and bootstrap boundaries and is not Task 5.
+  as `4e67771` on the explicit `ethonline` remote. The recovery correction is
+  separately checkpointed as `033c751`; the Task 5 dependency-impact diff is
+  intentionally uncommitted for review.
 - The configured The Graph source passed a read-only `_meta` preflight with
   fresh indexed metadata and no indexing errors during the recorded check.
 - A bounded live account query returned a complete page containing the
@@ -41,16 +42,18 @@
   one-use paper execution are implemented behind bounded server routes. State
   is in memory and expires; durable authorization is not claimed.
 - `GET /exposure-graph` renders the graph, provenance, editable Task 3
-  read-only plan/repair console and a separately accessible legacy
-  single-purchase demo. The screen has no reservation, signing, execution or
-  runtime what-if controls; the Task 4A ledger and Task 4B operator routes are
-  not exposed by this screen. Legacy permit/replay controls are enabled only
-  by their own eligible stored evaluation.
+  read-only plan/repair console, the bounded Task 5 dependency-impact panel
+  and a separately accessible legacy single-purchase demo. The screen has no
+  reservation, signing or execution controls; the Task 4A ledger and Task 4B
+  operator mutation routes are not exposed by this screen. Legacy
+  permit/replay controls are enabled only by their own eligible stored
+  evaluation.
 - Task 1/2 exact plan validation, accounting, diagnostic projection and repair
   checks remain green. The Task 3/Task 4A correction checks remain `39/39`,
-  the Task 4B focused correction checks pass `29/29`, and `npm test` passes
-  `267` tests with zero failures, skips or todos; JavaScript syntax and
-  `git diff --check` pass.
+  the Task 4B focused correction checks pass `29/29`, the current affected
+  Task 5/UI/lifecycle suite passes `23/23`, and `npm test` passes `276` tests
+  with zero failures, skips or todos; JavaScript syntax and `git diff --check`
+  pass.
 - The smallest external-client path is implemented locally as a native-fetch
   provider-selectable Responses wrapper around `sentinel_exposure_graph`; the
   focused provider tests pass `6/6`. It is bounded to two AI requests, one
@@ -90,8 +93,9 @@
   direct/Aave/total `.50/.50/1.00` with `PARTIAL` goal fulfillment. The
   diagnostic projection is not authorization replay.
 - Separate fixture cases cover cap-restoring withdrawal and unsupported
-  `reduce_total_exposure`. Shared reservations and runtime what-if return an
-  explicit Task 3 boundary response; they are not fabricated successes.
+  `reduce_total_exposure`. Shared reservations remain outside the read-only
+  planner; the separate Task 5 what-if route is documented below and remains
+  non-authorizing.
 - Implemented-route browser captures are
   `output/playwright/sentinel-task3-desktop.png` and
   `output/playwright/sentinel-task3-mobile.png`. They show the fixture label,
@@ -205,8 +209,9 @@
   and this evidence is not a live paper execution, wallet transaction,
   production authorization or durable ledger. No wallet transaction was sent.
 - Task 4B remains process-local and in-memory. Restart invalidates generation-
-  bound state; no Task 5 runtime what-if, reservation UI or external planner
-  integration is included.
+  bound state. Task 5 adds only the read-only dependency-impact panel below;
+  it does not add reservation UI, execution controls or planner-tool
+  integration.
 
 ## FACT — Task 4B correction checkpoint
 
@@ -254,9 +259,190 @@
   requests preserve session, overlay and nonce state. This route does not
   authorize a plan, issue a permit or execute anything.
 - Focused `api/tests/exposure-plan-permit.test.ts` passes `29/29`; the full
-  suite passes `267/267`; Node syntax checks and `git diff --check` pass. This
-  is process-local paper authorization only. It does not establish durable
-  authorization, production session security, wallet execution or Task 5.
+  suite at this correction checkpoint passed `267/267`; Node syntax checks and
+  `git diff --check` pass. This is process-local paper authorization only. It
+  does not establish durable authorization, production session security,
+  wallet execution or Task 5 execution semantics; the separate read-only Task
+  5 impact checkpoint is recorded below.
+
+## FACT — Task 5 dependency-impact checkpoint (uncommitted)
+
+- The allowlisted `POST /api/exposure/what-if` boundary accepts exactly
+  `evaluation_ref` and `scenario`, with the sole scenario
+  `aave_evidence_unavailable`. Evaluation references, source provenance,
+  policy, account context and eligibility are resolved from server-owned
+  process state. An unknown, expired or unqualified source fails explicitly;
+  the route never fetches a provider or substitutes a fixture.
+- The service builds a distinct `mode: what_if` simulation session from the
+  stored evaluation. It copies only analysis-safe plan, reservation and
+  permit-check metadata; it does not copy credentials, signed permit
+  material, execution authority or operator cookies. The original graph,
+  policy, reservations, paper overlay, session and consumed nonces remain
+  unchanged. Repeated simulations receive distinct opaque session IDs.
+- The same read-only predicate layer is evaluated for the original and
+  hypothetical contexts. On the canonical `.40/.40` fixture, the original
+  snapshot is `FIXTURE` with direct `.4`, Aave `.4`, total `.8` and cap `1`;
+  the hypothetical snapshot is `WHAT-IF / SIMULATION` with the same direct
+  `.4` and cap `1`, while Aave evidence and total exposure are
+  `unavailable`. `total_exposure_cap` changes from
+  `established/aave_user_reserve_available` to
+  `unavailable/aave_evidence_unavailable`; `aave_evidence` is also listed as
+  unavailable. The base block/hash are retained and unrelated metadata
+  changes do not become an outage.
+- Aave-touching and direct-only plans are both reported as affected because
+  both rely on the shared total-cap predicate. An accepted reservation is
+  marked `would_require_re_evaluation` only inside the hypothetical report;
+  the actual reservation remains unchanged. A simulation permit/execution
+  attempt is rejected at the existing boundary with
+  `SIMULATION_NOT_EXECUTABLE` and has no overlay or nonce side effect.
+- The implemented route renders the original and hypothetical snapshots side
+  by side, keeps `FIXTURE` provenance on the base snapshot, labels the overlay
+  `WHAT-IF / SIMULATION`, and exposes the causal path through keyboard-
+  accessible details. Values are rendered from the response as exact decimal
+  strings; raw values, permit-check evidence, loading/error and stale states remain
+  separate from authorization.
+- Browser evidence from the implemented route is captured in
+  [sentinel-task5-what-if-desktop.png](../../output/playwright/sentinel-task5-what-if-desktop.png)
+  and
+  [sentinel-task5-what-if-mobile.png](../../output/playwright/sentinel-task5-what-if-mobile.png).
+  The browser made the real `POST /api/exposure/what-if` request with the
+  exact two-field body and rendered the returned fixture values. These are
+  sanitized synthetic-fixture captures, not a live incident or production
+  source result.
+- Task 5 verification completed locally with `7/7` focused impact tests,
+  `23/23` affected Task 5/UI/lifecycle checks and `276/276` full `npm test`
+  tests, with zero failures, skips or todos. Node syntax checks and
+  `git diff --check` pass. The recovery checkpoint remains the separate
+  committed `033c751`; Task 5 changes, screenshots and documentation remain
+  uncommitted. Task 6 has not started.
+- Remaining Task 5 limitations are explicit: the simulation is process-local
+  and read-only, does not model a fetched live incident or invalidate actual
+  reservations, and supports only the one allowlisted scenario. The direct-
+  only propagation is covered by deterministic service tests but was not a
+  separate browser capture. The unresolved Aave `+1` raw-unit mismatch,
+  USD/oracle gaps, absent wallet transaction and lack of production/sponsor
+  qualification are unchanged. The prior external AI trace did not exercise
+  this new planner.
+
+## FACT — Task 5 corrective checkpoint (uncommitted)
+
+- The what-if result now has an explicit `.plan-what-if-result[hidden]` CSS
+  override with `display: none !important`. Browser evaluation confirmed that
+  before the first simulation the element has `hidden: true`, computed
+  `display: none`, zero layout height and no accessibility-tree entry. Editing
+  the plan hides the old result immediately; a new evaluation and what-if
+  recover without reload. A failed live-source request leaves the result hidden
+  and the fixture recovery remains explicit.
+- Accepted reservations no longer imply a permit check. The current
+  authorization runtime does not persist permit-check receipts, so both an
+  accepted plan with no permit issuance and an accepted plan whose local
+  fixture permit was successfully issued return an empty
+  `simulated_permits_copy`, `permit_check_id: null`,
+  `original.permit_status: not_recorded` and a hypothetical permit edge.
+  The explanation is: "No permit-check evidence is recorded in this analysis;
+  issuance/check history is not established." This status does not
+  claim that issuance never happened. Explicit builder inputs may still
+  represent a genuinely recorded check; no reservation identifier is used as
+  a fallback.
+- The public hub now exposes a prominent `Open Sentinel Exposure Graph` link
+  without changing `/judge`, `/operator` or other legacy routes. The Exposure
+  Graph header labels LIVE SOURCE and REPLAY as capabilities, while the active
+  source remains shown separately as `FIXTURE`, `LIVE_SOURCE` or `REPLAY`.
+- A bounded proposal artifact is available at
+  `docs/superpowers/mockups/sentinel-exposure-graph-visual-proposals.html`.
+  Proposal A is the recommended direction, not an approved production
+  redesign: it uses a full-width decision-first desktop workspace and
+  decision → plan → graph mobile order, while borrowing the short causal
+  explanation from Proposal B. Proposal B remains reference material. Both
+  are explicitly labeled proposals and contain only sanitized fixture values.
+  Proposal A now keeps the comparison board readable at 1024, 1280, 1440 and
+  390 pixels; its mobile graph says `Projected after repair — not executed`,
+  while the what-if baseline explicitly remains the original `.40/.40/.80`
+  fixture. Policy PASS, goal PARTIAL and execution authority none remain
+  separate, and the causal path is visible before technical hashes/raw IDs.
+- The affected corrective suite passed `23/23`; the fresh full suite passed
+  `276/276`. Syntax checks and `git diff --check` passed. Actual browser
+  verification used the implemented route and a deferred-response harness:
+  the initial what-if result was hidden with computed `display: none` and
+  zero height; a successful what-if became visible with `FIXTURE` original
+  and `WHAT-IF / SIMULATION` overlay; source invalidation hid the result and
+  disabled the what-if control; editing during an in-flight what-if kept the
+  stale response hidden; a controlled `503` kept the result hidden and
+  `BLOCKED`; reevaluation and a new what-if recovered on the same page.
+  The controlled `503` creates an expected failed-resource console entry; it
+  is not live-source evidence.
+- Sanitized browser captures are available at
+  `output/playwright/sentinel-task5-corrective-desktop.png`,
+  `output/playwright/sentinel-task5-corrective-what-if-desktop.png` and
+  `output/playwright/sentinel-task5-corrective-what-if-mobile.png`. The
+  revised proposal captures are
+  `output/playwright/sentinel-proposals-corrective-1024.png`,
+  `output/playwright/sentinel-proposals-corrective-1440.png` and
+  `output/playwright/sentinel-proposals-corrective-390.png`.
+
+## FACT — bounded Proposal A frontend checkpoint (uncommitted)
+
+- The implemented `/exposure-graph` route now follows the revised Proposal A
+  direction without replacing the working application: a compact provenance
+  header, shared-dependency graph and decision summary share the primary
+  workspace; the requested-versus-repaired table is populated from the
+  server response; and the legacy single-purchase controls remain in a
+  separate visual section with their existing gates.
+- The canonical fixture rendered by the route remains original direct/Aave
+  `.40/.40` and total `.80`. The diagnostic projection renders total `1.10`
+  and Aave `.70`; the repaired candidate renders direct/Aave `.50/.50` and
+  total `1.00`, with candidate policy `PASS`, goal `PARTIAL`, explicit
+  `Candidate · not executed`, and no reservation or execution authority.
+- Source provenance is visible in the header and graph (`FIXTURE` by default),
+  and the qualified-live path remains explicit. A failed live-source request
+  showed `Live source blocked` and `No fixture was substituted after
+  live-source failure`; the prior fixture result was not retained as current.
+- The what-if remains based on the original snapshot, with `FIXTURE` on the
+  base and `WHAT-IF / SIMULATION` on the hypothetical side. The response
+  continues to show `SIMULATION_NOT_EXECUTABLE`, missing Aave/total as
+  unavailable, and no actual reservation invalidation. Legacy permit/paper
+  controls stayed disabled after planner-only results in the browser run.
+- Browser evidence from the implemented route is captured at
+  [390px](../../output/playwright/sentinel-exposure-graph-proposal-a-390.png),
+  [768px](../../output/playwright/sentinel-exposure-graph-proposal-a-768.png),
+  [1024px](../../output/playwright/sentinel-exposure-graph-proposal-a-1024.png),
+  [1280px](../../output/playwright/sentinel-exposure-graph-proposal-a-1280.png),
+  [1440px](../../output/playwright/sentinel-exposure-graph-proposal-a-1440.png)
+  and the [mobile what-if state](../../output/playwright/sentinel-exposure-graph-proposal-a-390-what-if.png).
+  These are sanitized local browser captures, not production or live-source
+  qualification evidence.
+- Actual browser checks covered all three canonical cases, edited exact input
+  and POST-backed reevaluation, malformed input clearing, explicit live-source
+  failure without fixture fallback, what-if visibility/recovery, Back and
+  refresh, keyboard Enter submission, zero horizontal overflow at all five
+  requested widths, and legacy-control separation. A deferred response held
+  by the real page handler was released after an input edit; it could not
+  restore the old result or disable the current Evaluate control.
+- The frontend checkpoint does not add routes, planner-tool integration,
+  reservations, signing, execution, runtime what-if, provider changes or
+  Task 6 work. The Aave `+1` raw-unit mismatch and all previously documented
+  source/USD/oracle limitations remain unchanged. The Proposal A mockup is
+  still a design reference; these captures are the implemented route.
+
+## FACT — bounded repair-table correspondence correction (uncommitted)
+
+- The repair comparison now uses the service-provided `repair.changes` and
+  each original `step_index` to associate candidate quantities. It no longer
+  pairs the candidate subset by array position alone, so removed zero-quantity
+  steps do not shift later rows and repeated action kinds remain distinguishable.
+- Removed steps render `Removed`. A missing repair candidate renders `No
+  candidate`; the UI does not use that label for an ordinary removed step and
+  does not recalculate repair policy in the browser.
+- Deterministic regressions cover first-step removal, middle-step removal,
+  repeated action kinds, the canonical `.30/.30` to `.20/.10` repair and
+  `NO_SUPPORTED_REPAIR`. The actual route reproduced the mixed
+  `supply_aave .10` plus `withdraw_aave_to_wallet .20` case: the table showed
+  `Supply to Aave → Removed` and `Withdraw Aave supply to wallet → .20`, while
+  the expanded candidate list contained only the withdrawal.
+- Browser evidence is captured at
+  `output/playwright/sentinel-frontend-repair-correspondence-details.png`.
+  The focused UI file passed `10/10`; the complete affected checkpoint and
+  full-suite reruns remain the review gate for this correction.
 
 ## FACT — bounded diagnosis and live paper gate
 
@@ -415,8 +601,9 @@ though the tool/source chain was demonstrated. No retry followed.
 - Evaluation references, pending-account locks and consumed nonces are
   process-local in-memory state and disappear on restart.
 - Task 4A reservations and the Task 4B operator/session state are process-local
-  and invalid after a new runtime generation. Task 5 runtime what-if,
-  reservation UI and planner-tool integration remain outside this checkpoint.
+  and invalid after a new runtime generation. Task 5 is limited to the
+  read-only dependency-impact scenario above; reservation UI and
+  planner-tool integration remain outside this checkpoint.
 - No production deployment, wallet transaction, live trade, portal
   submission, outbound message, adoption, partnership, revenue, audit,
   security assurance or prize outcome is claimed.
@@ -466,14 +653,16 @@ dependency mutation was performed.
 3. Founder reviews the submission draft, records the narrated 2–4 minute video,
    checks the live Hacker Dashboard fields and decides separately whether to
    publish the project.
-4. Review this Task 4B checkpoint separately from Task 5. Do not narrate the
-   controlled fixture lifecycle as live paper execution, durable authorization,
-   runtime what-if integration or wallet execution.
+4. Review the uncommitted Task 5 dependency-impact diff separately from the
+   recovery commit and Task 4B evidence. Do not narrate the controlled fixture
+   lifecycle as live paper execution, durable authorization, a live incident,
+   external-AI planner integration or wallet execution.
 
 ## Authority boundary
 
-Local implementation and verification are complete for the committed slice;
-the two reviewed commits were pushed only to the explicit `ethonline` remote
-after approval. Paid services, account changes, deployment, portal submission
-and wallet actions remain separate founder decisions. This file reports local
-facts and bounded unknowns, not release readiness or sponsor qualification.
+Local implementation and verification are complete for the committed recovery
+slice and the uncommitted Task 5 review slice; the reviewed commits were
+pushed only to the explicit `ethonline` remote after approval. Paid services,
+account changes, deployment, portal submission and wallet actions remain
+separate founder decisions. This file reports local facts and bounded
+unknowns, not release readiness or sponsor qualification.
