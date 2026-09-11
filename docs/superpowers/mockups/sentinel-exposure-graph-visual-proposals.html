@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:," />
+    <title>Sentinel Exposure Graph — Visual Proposals</title>
+    <style>
+      :root {
+        --paper: #f4f0e8;
+        --paper-strong: #fffdf8;
+        --ink: #182335;
+        --muted: #667287;
+        --line: #d9d4c8;
+        --navy: #162235;
+        --teal: #1f8177;
+        --teal-soft: #dcefe9;
+        --gold: #a56f22;
+        --gold-soft: #f5e7ca;
+        --clay: #a84c44;
+        --clay-soft: #f7dfdb;
+        --blue-soft: #e2e9f4;
+        --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        --ui: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      * { box-sizing: border-box; }
+      body { margin: 0; color: var(--ink); background: #dcd7cb; font-family: var(--ui); }
+      .page { max-width: 1480px; margin: 0 auto; padding: 28px; }
+      h1, h2, h3, p { margin-top: 0; }
+      h1, h2, h3 { letter-spacing: -.025em; }
+      h1 { margin-bottom: 7px; font-size: clamp(2rem, 4vw, 3.7rem); }
+      h2 { margin-bottom: 6px; font-size: 1.45rem; }
+      h3 { margin-bottom: 5px; font-size: 1rem; }
+      .eyebrow, .label { margin: 0 0 7px; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+      .subtitle, .copy { color: var(--muted); line-height: 1.45; }
+      .subtitle { max-width: 800px; margin-bottom: 0; }
+      .proposal-banner, .proposal-card { border: 1px solid var(--line); border-radius: 18px; background: var(--paper-strong); box-shadow: 0 16px 35px rgba(24,35,53,.09); }
+      .proposal-banner { display: flex; justify-content: space-between; gap: 22px; align-items: end; margin-bottom: 18px; padding: 22px 24px; }
+      .badge-row, .meta-row, .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+      .badge, .chip { display: inline-flex; align-items: center; min-height: 26px; padding: 5px 9px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+      .badge-fixture { color: #73521b; background: var(--gold-soft); }
+      .badge-whatif { color: #7f342f; background: var(--clay-soft); }
+      .badge-paper { color: #344e75; background: var(--blue-soft); }
+      .badge-proposal { color: var(--navy); background: #e8e3d9; }
+      .chip { color: var(--muted); background: #eeece5; font-family: var(--mono); letter-spacing: 0; text-transform: none; }
+      .proposal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+      .proposal-card { min-width: 0; overflow: hidden; }
+      .proposal-a-card { grid-column: 1 / -1; }
+      .proposal-b-card { grid-column: 1 / -1; }
+      .proposal-head { display: flex; justify-content: space-between; gap: 14px; align-items: start; padding: 17px 18px; border-bottom: 1px solid var(--line); }
+      .proposal-head p { margin-bottom: 0; }
+      .proposal-body { padding: 16px; background: var(--paper); }
+      .desktop-label, .mobile-label { margin: 0 0 8px; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+      .desktop-frame { min-height: 510px; padding: 13px; border: 1px solid var(--line); border-radius: 13px; background: #fbfaf6; }
+      .workspace-a { display: grid; grid-template-columns: minmax(170px, .85fr) minmax(280px, 1.3fr) minmax(210px, .95fr); gap: 10px; }
+      .workspace-b { display: grid; grid-template-columns: minmax(0, 1fr) minmax(165px, .58fr); gap: 10px; }
+      .workspace-b-main { display: grid; gap: 10px; }
+      .panel { min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: 11px; background: var(--paper-strong); }
+      .panel + .panel { margin-top: 10px; }
+      .decision { border-left: 4px solid var(--gold); }
+      .decision.whatif { border-left-color: var(--clay); }
+      .verdict { display: block; margin: 5px 0 9px; font-size: 1.42rem; letter-spacing: -.03em; }
+      .partial { color: var(--gold); }
+      .blocked { color: var(--clay); }
+      .muted { color: var(--muted); }
+      .mono { font-family: var(--mono); font-size: .73rem; overflow-wrap: anywhere; }
+      .steps, .path, .mobile-stack { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+      .step { display: grid; grid-template-columns: 22px 1fr; gap: 7px; align-items: start; padding: 8px; border-radius: 8px; background: #f0eee8; }
+      .step-index { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; color: white; background: var(--navy); font-size: 10px; font-weight: 800; }
+      .compare { display: grid; gap: 5px; margin-top: 10px; }
+      .compare-row { display: grid; grid-template-columns: 1.1fr 1fr 1fr; gap: 5px; padding: 5px 0; border-bottom: 1px solid #eee9de; font-family: var(--mono); font-size: .68rem; }
+      .compare-row span:first-child { color: var(--muted); font-family: var(--ui); }
+      .after { color: var(--teal); font-weight: 800; }
+      .graph { position: relative; min-height: 220px; overflow: hidden; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: #fbfaf6; }
+      .node { position: absolute; z-index: 1; min-width: 83px; padding: 8px 6px; border: 1px solid var(--line); border-radius: 9px; text-align: center; background: var(--paper-strong); box-shadow: 0 4px 10px rgba(24,35,53,.07); }
+      .node small { display: block; margin-bottom: 3px; color: var(--muted); font-size: 8px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+      .node strong { font-size: .72rem; }
+      .node-account { left: 3%; top: 42%; }
+      .node-direct { left: 37%; top: 11%; border-color: #b7d9d0; }
+      .node-aave { left: 37%; top: 64%; border-color: #d8c58f; }
+      .node-asset { right: 3%; top: 42%; border: 2px solid var(--teal); }
+      .edge { position: absolute; height: 2px; transform-origin: left center; background: #b7b4aa; }
+      .edge-a { left: 20%; top: 50%; width: 20%; transform: rotate(-42deg); }
+      .edge-b { left: 20%; top: 50%; width: 20%; transform: rotate(42deg); }
+      .edge-c { left: 56%; top: 24%; width: 26%; transform: rotate(29deg); background: var(--teal); }
+      .edge-d { left: 56%; top: 73%; width: 26%; transform: rotate(-29deg); background: var(--gold); }
+      .graph-note { position: absolute; right: 10px; bottom: 8px; left: 10px; color: var(--muted); font-size: 9px; }
+      .metric-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin-top: 10px; }
+      .metric { padding: 8px; border-radius: 8px; background: #f0eee8; }
+      .metric span { display: block; color: var(--muted); font-size: 9px; letter-spacing: .07em; text-transform: uppercase; }
+      .metric strong { display: block; margin-top: 3px; font-family: var(--mono); font-size: .72rem; }
+      .whatif-strip { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+      .whatif-card { padding: 10px; border: 1px solid var(--line); border-top: 3px solid var(--teal); border-radius: 9px; background: var(--paper-strong); }
+      .whatif-card.sim { border-top-color: var(--clay); background: #fff8f5; }
+      .whatif-card p:last-child { margin-bottom: 0; }
+      .causal-summary { grid-column: 1 / -1; }
+      .legacy-strip { margin-top: 10px; padding: 9px; border: 1px dashed var(--line); border-radius: 9px; color: var(--muted); font-size: .72rem; }
+      .mobile-label { margin-top: 16px; }
+      .mobile-frame { max-width: 300px; margin: 0 auto; padding: 10px; border: 7px solid var(--navy); border-radius: 21px; background: var(--paper); }
+      .mobile-frame .panel { margin-bottom: 9px; }
+      .mobile-frame .workspace-a, .mobile-frame .workspace-b { display: block; }
+      .mobile-frame .workspace-a > .panel, .mobile-frame .workspace-b-main > .panel, .mobile-frame .workspace-b > .panel { margin-bottom: 9px; }
+      .mobile-frame .graph { min-height: 196px; }
+      .mobile-frame .node { min-width: 65px; padding: 6px 4px; }
+      .mobile-frame .node strong { font-size: .62rem; }
+      .mobile-frame .node-account { left: 1%; }
+      .mobile-frame .node-direct, .mobile-frame .node-aave { left: 34%; }
+      .mobile-frame .node-asset { right: 1%; }
+      .mobile-frame .whatif-strip { grid-template-columns: 1fr; }
+      details { margin-top: 8px; }
+      summary { cursor: pointer; color: var(--navy); font-size: .73rem; font-weight: 800; }
+      .recommendation { grid-column: 1 / -1; padding: 18px 20px; border: 1px solid var(--line); border-radius: 15px; background: var(--paper-strong); }
+      .recommendation ul { margin-bottom: 0; color: var(--muted); line-height: 1.5; }
+      @media (max-width: 1160px) { .proposal-grid { grid-template-columns: 1fr; } }
+      @media (max-width: 980px) { .recommendation { grid-column: auto; } }
+      @media (max-width: 620px) { .page { padding: 14px; } .proposal-banner { display: block; padding: 17px; } .proposal-banner .badge-row { margin-top: 14px; } .workspace-a, .workspace-b { display: block; } .workspace-a > .panel, .workspace-b-main > .panel, .workspace-b > .panel { margin-bottom: 10px; } .whatif-strip { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="proposal-banner">
+        <div>
+          <p class="eyebrow">Visual checkpoint · design proposals only</p>
+          <h1>Sentinel Exposure Graph</h1>
+          <p class="subtitle">Two bounded arrangements for the same implemented plan review and dependency-impact evidence. These mockups do not change the route, create controls, or claim live incidents.</p>
+        </div>
+        <div class="badge-row" aria-label="Proposal status">
+          <span class="badge badge-proposal">NOT IMPLEMENTED</span>
+          <span class="badge badge-fixture">FIXTURE VALUES</span>
+          <span class="badge badge-paper">REVIEW ONLY</span>
+        </div>
+      </header>
+
+      <section class="proposal-grid" aria-label="Two visual layout proposals">
+        <article class="proposal-card proposal-a-card" id="proposal-a">
+          <header class="proposal-head">
+            <div><p class="eyebrow">Proposal A · recommended</p><h2>Decision-first split workspace</h2><p class="copy">Put the conclusion beside the shared dependency graph, with the requested-versus-repaired plan immediately available.</p></div>
+            <span class="badge badge-proposal">PROPOSAL A</span>
+          </header>
+          <div class="proposal-body">
+            <p class="desktop-label">Desktop treatment · full-width review preview</p>
+            <div class="desktop-frame">
+              <div class="workspace-a">
+                <section class="panel">
+                  <p class="label">Intent</p>
+                  <h3>Agent A · supply up to 0.30</h3>
+                  <ol class="steps">
+                    <li class="step"><span class="step-index">1</span><span><strong>Acquire</strong><br /><span class="mono">+0.30 wstETH</span></span></li>
+                    <li class="step"><span class="step-index">2</span><span><strong>Supply to Aave</strong><br /><span class="mono">+0.30 wstETH</span></span></li>
+                  </ol>
+                  <div class="metric-grid"><div class="metric"><span>Direct before</span><strong>0.40</strong></div><div class="metric"><span>Aave before</span><strong>0.40</strong></div></div>
+                </section>
+                <section class="panel">
+                  <p class="label">Shared dependency graph</p>
+                  <div class="graph" role="img" aria-label="Proposal graph: direct holding and Aave supply share wstETH">
+                    <span class="edge edge-a"></span><span class="edge edge-b"></span><span class="edge edge-c"></span><span class="edge edge-d"></span>
+                    <div class="node node-account"><small>subject</small><strong>server scope</strong></div><div class="node node-direct"><small>direct</small><strong>0.40</strong></div><div class="node node-aave"><small>Aave</small><strong>0.40</strong></div><div class="node node-asset"><small>shared asset</small><strong>wstETH</strong></div>
+                    <span class="graph-note">Two attributable paths converge on one cap.</span>
+                  </div>
+                  <div class="meta-row" style="margin-top:9px"><span class="badge badge-fixture">FIXTURE BASE</span><span class="chip">cap 1.00 · Aave cap 0.50</span></div>
+                </section>
+                <section class="panel decision">
+                  <p class="label">Decision summary</p>
+                  <strong class="verdict partial">PARTIAL REPAIR</strong>
+                  <p class="copy"><strong>Policy:</strong> PASS after repair · <strong>Goal:</strong> PARTIAL · <strong>Execution authority:</strong> none</p>
+                  <div class="compare"><div class="compare-row"><span></span><span>Requested</span><span>Repair</span></div><div class="compare-row"><span>Acquire</span><span>0.30</span><span class="after">0.20</span></div><div class="compare-row"><span>Supply</span><span>0.30</span><span class="after">0.10</span></div><div class="compare-row"><span>Total / Aave</span><span>1.10 / 0.70</span><span class="after">1.00 / 0.50</span></div></div>
+                  <p class="copy" style="margin-bottom:0">Explicit partial acceptance is still required; no reservation or permit exists.</p>
+                </section>
+              </div>
+              <div class="whatif-strip">
+                <section class="whatif-card"><p class="label">Original snapshot · FIXTURE</p><p class="mono">direct 0.40 · Aave 0.40 · total 0.80</p></section>
+                <section class="whatif-card sim"><p class="label">Hypothetical · WHAT-IF / SIMULATION</p><p class="mono">direct 0.40 · Aave unavailable · total unavailable</p></section>
+                <section class="whatif-card sim causal-summary">
+                  <p class="label">Short causal explanation</p>
+                  <p class="copy"><strong>Aave evidence → total-exposure predicate → plan → reservation → permit.</strong> Missing Aave evidence makes the shared total-cap predicate unavailable; any affected reservation is hypothetical review output only.</p>
+                  <details><summary>Technical details · hashes and raw IDs</summary><p class="mono">Graph hash, raw quantities, reservation references and permit-check references stay in technical details. Permit-check evidence: not recorded.</p></details>
+                </section>
+              </div>
+              <div class="legacy-strip"><strong>Legacy single-purchase demo:</strong> separate section; controls remain governed by its own eligible evaluation.</div>
+            </div>
+            <p class="mobile-label">Mobile treatment · decision first</p>
+            <div class="mobile-frame">
+              <section class="panel decision"><p class="label">Decision</p><strong class="verdict partial">PARTIAL REPAIR</strong><p class="copy">0.30 requested · acquire 0.20 + supply 0.10 · final total 1.00.</p></section>
+              <section class="panel"><p class="label">Requested → repaired</p><ul class="steps"><li class="step"><span class="step-index">1</span><span>acquire <span class="mono">0.30 → 0.20</span></span></li><li class="step"><span class="step-index">2</span><span>supply <span class="mono">0.30 → 0.10</span></span></li></ul></section>
+              <section class="panel"><p class="label">Shared dependency · Projected after repair — not executed</p><div class="graph"><span class="edge edge-a"></span><span class="edge edge-b"></span><span class="edge edge-c"></span><span class="edge edge-d"></span><div class="node node-account"><small>subject</small><strong>scope</strong></div><div class="node node-direct"><small>projected direct</small><strong>0.50</strong></div><div class="node node-aave"><small>projected Aave</small><strong>0.50</strong></div><div class="node node-asset"><small>asset</small><strong>wstETH</strong></div></div></section>
+              <section class="panel decision whatif"><p class="label">What-if baseline remains original FIXTURE</p><strong class="verdict blocked">NON-AUTHORIZING</strong><p class="copy">Starts from original direct <span class="mono">0.40</span> / Aave <span class="mono">0.40</span> / total <span class="mono">0.80</span>. Aave evidence unavailable → total cap unavailable. Original state unchanged.</p></section>
+            </div>
+          </div>
+        </article>
+
+        <article class="proposal-card proposal-b-card" id="proposal-b">
+          <header class="proposal-head">
+            <div><p class="eyebrow">Proposal B · alternative</p><h2>Evidence narrative rail</h2><p class="copy">Lead with a single decision card, then walk down the causal chain before exposing technical source detail.</p></div>
+            <span class="badge badge-proposal">PROPOSAL B</span>
+          </header>
+          <div class="proposal-body">
+            <p class="desktop-label">Desktop treatment</p>
+            <div class="desktop-frame">
+              <div class="workspace-b">
+                <div class="workspace-b-main">
+                  <section class="panel decision"><p class="label">Current conclusion</p><strong class="verdict partial">REVIEW PARTIAL CANDIDATE</strong><p class="copy">The requested path would reach <span class="mono">total 1.10</span> and <span class="mono">Aave 0.70</span>. The bounded candidate reaches <span class="mono">1.00 / 0.50</span>, but is not permission to execute.</p><div class="compare"><div class="compare-row"><span>Steps</span><span>requested</span><span>repaired</span></div><div class="compare-row"><span>Acquire</span><span>0.30</span><span class="after">0.20</span></div><div class="compare-row"><span>Supply</span><span>0.30</span><span class="after">0.10</span></div></div></section>
+                  <section class="panel"><p class="label">Causal evidence rail</p><ol class="path"><li class="step"><span class="step-index">1</span><span><strong>Aave UserReserve evidence</strong><br /><span class="mono">FIXTURE · established</span></span></li><li class="step"><span class="step-index">2</span><span><strong>Total-exposure predicate</strong><br /><span class="mono">cap 1.00 · Aave cap 0.50</span></span></li><li class="step"><span class="step-index">3</span><span><strong>Plan → reservation → permit</strong><br /><span class="mono">review only · no authority copied</span></span></li></ol></section>
+                  <section class="panel whatif-card sim"><p class="label">Separate what-if · WHAT-IF / SIMULATION</p><h3>Aave evidence unavailable</h3><p class="copy">Direct remains <span class="mono">0.40</span>; Aave and total become <strong>unavailable</strong>. The same total-cap predicate cannot be established.</p><details><summary>Show exact causal path</summary><p class="mono">Aave evidence → total-exposure predicate → plan → reservation → permit</p></details></section>
+                </div>
+                <aside>
+                  <section class="panel"><p class="label">Snapshot</p><div class="metric-grid"><div class="metric"><span>Direct</span><strong>0.40</strong></div><div class="metric"><span>Aave</span><strong>0.40</strong></div><div class="metric"><span>Total</span><strong>0.80</strong></div><div class="metric"><span>Headroom</span><strong>0.20</strong></div></div><div class="meta-row" style="margin-top:9px"><span class="badge badge-fixture">FIXTURE</span><span class="chip">raw values in details</span></div></section>
+                  <section class="panel"><p class="label">Boundaries</p><p class="copy" style="margin-bottom:0"><strong>Policy:</strong> independent<br /><strong>Goal:</strong> partial<br /><strong>Paper:</strong> review only<br /><strong>Real transaction:</strong> unverified</p></section>
+                  <section class="panel"><p class="label">Legacy flow</p><p class="copy" style="margin-bottom:0">Separate single-purchase permit/replay controls. No planner result enables them.</p></section>
+                </aside>
+              </div>
+            </div>
+            <p class="mobile-label">Mobile treatment · narrative stack</p>
+            <div class="mobile-frame">
+              <section class="panel decision"><p class="label">Current conclusion</p><strong class="verdict partial">PARTIAL CANDIDATE</strong><p class="copy">Repair 0.30/0.30 to 0.20/0.10. No execution authority.</p></section>
+              <section class="panel"><p class="label">Evidence path</p><ol class="path"><li class="step"><span class="step-index">1</span><span>Aave evidence · <span class="mono">FIXTURE</span></span></li><li class="step"><span class="step-index">2</span><span>Total cap · <span class="mono">1.00</span></span></li><li class="step"><span class="step-index">3</span><span>Plan boundary · <span class="mono">review only</span></span></li></ol></section>
+              <section class="panel"><p class="label">Snapshot</p><div class="metric-grid"><div class="metric"><span>Direct</span><strong>0.40</strong></div><div class="metric"><span>Aave</span><strong>0.40</strong></div><div class="metric"><span>Total</span><strong>0.80</strong></div><div class="metric"><span>Headroom</span><strong>0.20</strong></div></div></section>
+              <section class="panel decision whatif"><p class="label">What-if</p><strong class="verdict blocked">EVIDENCE UNAVAILABLE</strong><p class="copy">Aave and total are unavailable; the original session is unchanged.</p></section>
+            </div>
+          </div>
+        </article>
+
+        <section class="recommendation">
+          <p class="eyebrow">Review decision</p>
+          <h2>Recommend Proposal A for the next visual iteration</h2>
+          <ul>
+            <li>It puts the decision-changing numbers and dependency graph in one compact desktop workspace.</li>
+            <li>Its mobile order follows the requested decision → edited plan → graph/details sequence.</li>
+            <li>Proposal B is stronger for an evidence-review audience, but its vertical causal narrative pushes the repair comparison lower on small screens.</li>
+            <li>Both proposals preserve separate FIXTURE, WHAT-IF / SIMULATION, PAPER / REVIEW ONLY and legacy-flow boundaries.</li>
+          </ul>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>

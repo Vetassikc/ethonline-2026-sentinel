@@ -14,6 +14,7 @@ const state = {
   selectedPath: null,
   plan: null,
   planSource: null,
+  whatIf: null,
   planStepCount: 2,
   planRequestSequence: 0,
 };
@@ -177,7 +178,7 @@ function policyPillClass(verdict) {
 
 function planPillClass(value) {
   if (["PASS", "FULL", "ELIGIBLE", "QUALIFIED"].includes(value)) return "status-pill status-pill-allow";
-  if (["PARTIAL", "VIOLATION", "UNVERIFIED", "STOPPED_ON_VIOLATION"].includes(value)) return "status-pill status-pill-downsize";
+  if (["PARTIAL", "HYPOTHETICAL", "VIOLATION", "UNVERIFIED", "STOPPED_ON_VIOLATION"].includes(value)) return "status-pill status-pill-downsize";
   if (["BLOCKED", "INELIGIBLE", "UNSATISFIED", "NO_SUPPORTED_REPAIR", "INVALID"].includes(value)) return "status-pill status-pill-deny";
   return "status-pill status-pill-neutral";
 }
@@ -193,13 +194,14 @@ function planUnits(value) {
   return typeof value === "string" ? `${compactDecimal(value)} wstETH` : "—";
 }
 
+const PLAN_ACTION_LABELS = {
+  acquire_wsteth: "Acquire wstETH",
+  supply_aave: "Supply to Aave",
+  withdraw_aave_to_wallet: "Withdraw Aave supply to wallet",
+};
+
 function planStepLabel(step) {
-  const labels = {
-    acquire_wsteth: "Acquire wstETH",
-    supply_aave: "Supply to Aave",
-    withdraw_aave_to_wallet: "Withdraw Aave supply to wallet",
-  };
-  return `${labels[step?.kind] ?? humanize(step?.kind)} · ${planUnits(step?.units)}`;
+  return `${PLAN_ACTION_LABELS[step?.kind] ?? humanize(step?.kind)} · ${planUnits(step?.units)}`;
 }
 
 function appendList(selector, values, emptyText = "—") {
@@ -230,6 +232,31 @@ function renderPlanSteps(plan) {
   setText("#plan-target", planUnits(plan?.goal?.target_units));
 }
 
+function provenancePillClass(provenance) {
+  if (provenance === "LIVE_SOURCE") return "status-pill status-pill-allow";
+  if (provenance === "FIXTURE") return "status-pill status-pill-neutral";
+  if (provenance === "REPLAY") return "status-pill status-pill-downsize";
+  return "status-pill status-pill-neutral";
+}
+
+function renderActiveProvenance(sourcePayload) {
+  const source = sourcePayload?.source ?? sourcePayload;
+  const mode = String(source?.mode ?? "unknown").toUpperCase();
+  const provenance = String(source?.provenance ?? "UNKNOWN").toUpperCase();
+  const active = $("#exposure-active-source");
+  if (active) {
+    active.className = provenancePillClass(provenance);
+    active.textContent = mode === provenance || mode === "UNKNOWN"
+      ? `ACTIVE PROVENANCE · ${provenance}`
+      : `ACTIVE PROVENANCE · ${provenance} · ${mode}`;
+  }
+  const graphProvenance = $("#plan-graph-provenance");
+  if (graphProvenance) {
+    graphProvenance.className = provenancePillClass(provenance);
+    graphProvenance.textContent = `ORIGINAL · ${provenance}`;
+  }
+}
+
 function renderPlanSource(sourcePayload) {
   const source = sourcePayload?.source ?? sourcePayload;
   const mode = source?.mode ?? "unknown";
@@ -241,6 +268,98 @@ function renderPlanSource(sourcePayload) {
     `${String(mode).toUpperCase()} · ${provenance} · ${qualification}`
       + (sourcePayload?.expires_at ? ` · expires ${sourcePayload.expires_at}` : ""),
   );
+  renderActiveProvenance(source);
+}
+
+export function buildPlanComparisonRows(plan, repair) {
+  const requested = Array.isArray(plan?.steps) ? plan.steps : [];
+  const candidate = Array.isArray(repair?.candidate?.steps) ? repair.candidate.steps : null;
+  const changesByStepIndex = new Map(
+    (Array.isArray(repair?.changes) ? repair.changes : [])
+      .filter((change) => Number.isInteger(change?.step_index))
+      .map((change) => [change.step_index, change]),
+  );
+  let candidateIndex = 0;
+
+  return requested.map((requestedStep, stepIndex) => {
+    if (!candidate) {
+      return {
+        step_index: stepIndex,
+        requested_kind: requestedStep?.kind,
+        requested_units: requestedStep?.units ?? null,
+        repaired_kind: null,
+        repaired_units: null,
+        status: "NO_CANDIDATE",
+      };
+    }
+
+    const change = changesByStepIndex.get(stepIndex);
+    const repairedUnits = change?.repaired_units ?? requestedStep?.units;
+    const repairedRaw = exactDecimalToRaw(repairedUnits);
+    if (repairedRaw === 0n) {
+      return {
+        step_index: stepIndex,
+        requested_kind: requestedStep?.kind,
+        requested_units: requestedStep?.units ?? null,
+        repaired_kind: null,
+        repaired_units: null,
+        status: "REMOVED",
+      };
+    }
+
+    const repairedStep = candidate[candidateIndex];
+    candidateIndex += 1;
+    if (!repairedStep) {
+      return {
+        step_index: stepIndex,
+        requested_kind: requestedStep?.kind,
+        requested_units: requestedStep?.units ?? null,
+        repaired_kind: null,
+        repaired_units: null,
+        status: "NO_CANDIDATE",
+      };
+    }
+    return {
+      step_index: stepIndex,
+      requested_kind: requestedStep?.kind,
+      requested_units: requestedStep?.units ?? null,
+      repaired_kind: repairedStep.kind,
+      repaired_units: repairedStep.units,
+      status: "REPAIRED",
+    };
+  });
+}
+
+function renderPlanComparison(plan, repair) {
+  const body = $("#plan-comparison-rows");
+  if (!body) return;
+  body.replaceChildren();
+  const rows = buildPlanComparisonRows(plan, repair);
+  if (rows.length === 0) {
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 3;
+    cell.textContent = "No plan steps returned.";
+    row.append(cell);
+    body.append(row);
+    return;
+  }
+  for (const comparison of rows) {
+    const row = document.createElement("tr");
+    const label = document.createElement("th");
+    label.scope = "row";
+    label.textContent = `${comparison.step_index + 1}. ${PLAN_ACTION_LABELS[comparison.requested_kind] ?? humanize(comparison.requested_kind)}`;
+    const requestedCell = document.createElement("td");
+    requestedCell.textContent = comparison.requested_units ? planUnits(comparison.requested_units) : "—";
+    const repairedCell = document.createElement("td");
+    repairedCell.textContent = comparison.status === "REMOVED"
+      ? "Removed"
+      : comparison.status === "NO_CANDIDATE"
+        ? "No candidate"
+        : planUnits(comparison.repaired_units);
+    row.append(label, requestedCell, repairedCell);
+    body.append(row);
+  }
 }
 
 function setPlanSourceControlsDisabled(disabled) {
@@ -256,11 +375,16 @@ function setPlanSourceControlsDisabled(disabled) {
 function beginPlanRequest(kind) {
   if (kind === "source") {
     planRequestLifecycle.invalidate("evaluate");
+    planRequestLifecycle.invalidate("what-if");
     // A source switch deliberately invalidates any dependent evaluation. The
     // source request owns recovery of the now-unclaimed evaluation control;
     // a later evaluation can claim it again without a stale response being
     // able to unlock that newer request.
     setDisabled("#plan-evaluate", false);
+    setDisabled("#plan-run-what-if", true);
+  } else if (kind === "evaluate") {
+    planRequestLifecycle.invalidate("what-if");
+    setDisabled("#plan-run-what-if", true);
   }
   const token = planRequestLifecycle.begin(kind);
   state.planRequestSequence = token.generation;
@@ -269,8 +393,10 @@ function beginPlanRequest(kind) {
 
 function markPlanStale(reason = "Inputs changed; evaluate the current plan.") {
   state.planRequestSequence = planRequestLifecycle.invalidate("evaluate");
+  planRequestLifecycle.invalidate("what-if");
   clearPlanDecision();
   setDisabled("#plan-evaluate", false);
+  setDisabled("#plan-run-what-if", true);
   setText("#plan-case-status", reason);
   setText("#plan-form-error", "");
   setPlanPill("#plan-policy-status", "PENDING");
@@ -346,10 +472,15 @@ function clearPlanDecision() {
     "#plan-goal-value",
     "#plan-paper-value",
     "#plan-real-tx-value",
+    "#plan-decision-heading",
+    "#plan-causal-summary",
     "#plan-diagnostic-status",
     "#plan-diagnostic-total",
     "#plan-diagnostic-aave",
     "#plan-diagnostic-violations",
+    "#plan-diagnostic-total-visible",
+    "#plan-diagnostic-aave-visible",
+    "#plan-diagnostic-violations-visible",
     "#plan-replay-completeness",
     "#plan-replay-semantics",
     "#plan-unevaluated-steps",
@@ -357,7 +488,9 @@ function clearPlanDecision() {
     "#plan-repair-direct",
     "#plan-repair-aave",
     "#plan-repair-total",
+    "#plan-repair-policy",
     "#plan-repair-goal",
+    "#plan-repair-projection-label",
     "#plan-total-cap",
     "#plan-aave-cap",
     "#plan-original-peak-total",
@@ -372,10 +505,54 @@ function clearPlanDecision() {
     "#plan-source-gaps",
     "#plan-boundary-status",
   ]) setText(selector, "—");
-  setText("#plan-decision-note", "The service will show whether the full arithmetic projection is complete.");
-  setText("#plan-repair-note", "A repair is explanatory output only. No reservation exists for this candidate.");
-  setText("#plan-budget-note", "Active reservation deltas are not available in Task 3.");
-  setText("#plan-what-if-note", "This checkpoint does not simulate runtime events, mutate sessions or claim reservation admission.");
+  setText("#plan-decision-note", "The requested plan, policy result and execution boundary stay separate.");
+  setText("#plan-repair-note", "The candidate is a projected review result, not an executed plan or reservation.");
+  setPlanPill("#plan-diagnostic-status-pill", null);
+  setPlanPill("#plan-repair-projection-label", null);
+  const comparisonRows = $("#plan-comparison-rows");
+  if (comparisonRows) {
+    comparisonRows.replaceChildren();
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 3;
+    cell.textContent = "Waiting for the service response.";
+    row.append(cell);
+    comparisonRows.append(row);
+  }
+  setText("#plan-budget-note", "Active reservation deltas are unavailable in this read-only review.");
+  setText("#plan-what-if-note", "Run the allowlisted Aave evidence outage as a separate, non-authorizing analysis.");
+  state.whatIf = null;
+  setPlanPill("#plan-what-if-status", null);
+  setText("#plan-what-if-error", "");
+  setWhatIfResultVisible(false);
+  for (const selector of [
+    "#plan-what-if-original-label",
+    "#plan-what-if-original-direct",
+    "#plan-what-if-original-aave",
+    "#plan-what-if-original-total",
+    "#plan-what-if-original-cap",
+    "#plan-what-if-original-predicate",
+    "#plan-what-if-simulated-label",
+    "#plan-what-if-simulated-direct",
+    "#plan-what-if-simulated-aave",
+    "#plan-what-if-simulated-total",
+    "#plan-what-if-simulated-cap",
+    "#plan-what-if-simulated-predicate",
+    "#plan-what-if-explanation",
+    "#plan-what-if-changed-predicate",
+    "#plan-what-if-changed-original",
+    "#plan-what-if-changed-simulated",
+    "#plan-what-if-session",
+    "#plan-what-if-evaluation-ref",
+    "#plan-what-if-graph-hash",
+    "#plan-what-if-reservations",
+    "#plan-what-if-permits",
+    "#plan-what-if-execution",
+    "#plan-what-if-reservations-note",
+  ]) setText(selector, "—");
+  appendList("#plan-what-if-plans", [], "No impact has been evaluated.");
+  appendList("#plan-what-if-path", [], "No causal path has been evaluated.");
+  setDisabled("#plan-run-what-if", true);
   appendList("#plan-repair-steps", [], "Waiting for the service response.");
   appendList("#plan-timeline", ["Waiting for a server-owned source."]);
   setPlanPill("#plan-policy-status", null);
@@ -393,6 +570,11 @@ function renderPlan(result) {
   const source = result?.source;
   const boundary = result?.boundary ?? {};
   state.plan = result;
+  state.whatIf = null;
+  setWhatIfResultVisible(false);
+  setPlanPill("#plan-what-if-status", null);
+  setText("#plan-what-if-error", "");
+  setDisabled("#plan-run-what-if", false);
   if (source) {
     state.planSource = { ...(state.planSource ?? {}), ...source };
     renderPlanSource({ evaluation_ref: state.planSource.evaluation_ref, source });
@@ -401,6 +583,7 @@ function renderPlan(result) {
   setText("#plan-case-mode", String((source?.mode ?? "SOURCE") + " · " + (result?.case_name ?? "PLAN")).toUpperCase());
   setText("#plan-case-status", "Server response loaded. Values below are derived from the read-only service.");
   renderPlanSteps(result.plan);
+  renderPlanComparison(result.plan, repair);
 
   setText("#plan-direct-quantity", formatRawUnits(initial?.direct_available_raw));
   setText("#plan-aave-quantity", formatRawUnits(initial?.aave_exposure_raw));
@@ -412,10 +595,27 @@ function renderPlan(result) {
   setText("#plan-paper-value", humanize(evaluation?.paper_eligibility));
   setText("#plan-real-tx-value", humanize(evaluation?.real_transaction_status));
   setText(
+    "#plan-decision-heading",
+    repair?.status === "PARTIAL" ? "Review the bounded partial repair" : "Review the requested plan",
+  );
+  setText(
     "#plan-decision-note",
     diagnostic?.status === "COMPLETE"
       ? "The complete projection is hypothetical and cannot authorize the original plan. Authorization replay stops at the first blocking predicate."
       : "The diagnostic projection is incomplete; unevaluated steps remain outside the displayed final state.",
+  );
+  const diagnosticTotal = formatRawUnits(projected?.total_exposure_raw);
+  const diagnosticAave = formatRawUnits(projected?.aave_exposure_raw);
+  const diagnosticViolations = uniqueViolationCodes(diagnostic?.violations).map(humanize).join(", ") || "none reported";
+  setPlanPill("#plan-diagnostic-status-pill", diagnostic?.status);
+  setText("#plan-diagnostic-total-visible", diagnosticTotal);
+  setText("#plan-diagnostic-aave-visible", diagnosticAave);
+  setText("#plan-diagnostic-violations-visible", diagnosticViolations);
+  setText(
+    "#plan-causal-summary",
+    projected?.total_exposure_raw && projected?.aave_exposure_raw
+      ? `The shared wstETH dependency makes the requested projection reach ${diagnosticTotal} total and ${diagnosticAave} Aave; the repair is review-only.`
+      : "The shared dependency could not be projected completely; no repair is authorization.",
   );
   setText("#plan-diagnostic-status", humanize(diagnostic?.status));
   setText("#plan-diagnostic-total", formatRawUnitsFull(projected?.total_exposure_raw));
@@ -427,16 +627,20 @@ function renderPlan(result) {
   setText("#plan-replay-violations", uniqueViolationCodes(evaluation?.violations).map(humanize).join(", ") || "none reported");
 
   setPlanPill("#plan-repair-status", repair?.status);
+  setPlanPill("#plan-repair-projection-label", repair?.status);
   setText(
     "#plan-repair-note",
     repair?.status === "NO_SUPPORTED_REPAIR"
       ? "No supported bounded repair was returned for this goal. The original plan remains non-authorizing."
-      : "Repair algorithm: " + humanize(repair?.repair_algorithm) + ". Review only; no reservation exists.",
+      : repair?.status === "PARTIAL"
+        ? "Repair algorithm: " + humanize(repair?.repair_algorithm) + ". Partial result requires explicit acceptance later; no reservation exists."
+        : "Repair algorithm: " + humanize(repair?.repair_algorithm) + ". Review only; no reservation exists.",
   );
   appendList("#plan-repair-steps", (repair?.candidate?.steps ?? []).map(planStepLabel), "No repair candidate returned.");
   setText("#plan-repair-direct", formatRawUnits(repairEvaluation?.final_state?.direct_available_raw));
   setText("#plan-repair-aave", formatRawUnits(repairEvaluation?.final_state?.aave_exposure_raw));
   setText("#plan-repair-total", formatRawUnits(repairEvaluation?.final_state?.total_exposure_raw));
+  setText("#plan-repair-policy", humanize(repairEvaluation?.policy_status));
   setText("#plan-repair-goal", humanize(repairEvaluation?.goal_status) + " · " + planUnits(repairEvaluation?.fulfilled_units) + " / " + planUnits(repairEvaluation?.target_units));
 
   setText("#plan-total-cap", formatRawUnits(initial?.dependency_cap_raw));
@@ -450,7 +654,7 @@ function renderPlan(result) {
     `aave_raw=${repairEvaluation?.final_state?.aave_exposure_raw ?? "—"}`,
     `total_raw=${repairEvaluation?.final_state?.total_exposure_raw ?? "—"}`,
   ].join(" · "));
-  setText("#plan-budget-note", "Original replay peaks are labeled separately from the repaired candidate. No reservation admission was evaluated in Task 3.");
+  setText("#plan-budget-note", "Original replay peaks are labeled separately from the repaired candidate. No reservation admission was evaluated in this read-only review.");
 
   setText("#plan-source-mode", String(source?.mode ?? "—") + " · " + String(source?.provenance ?? "—"));
   setText("#plan-source-qualification", String(source?.qualification ?? "—") + " · " + String(source?.providers?.graph ?? "—") + " + " + String(source?.providers?.rpc ?? "—"));
@@ -465,6 +669,125 @@ function renderPlan(result) {
     "Repair: " + humanize(repair?.status) + " · operator review only",
     "Plan gate: not issued · reservation, signing and execution unavailable",
   ]);
+}
+
+function setWhatIfResultVisible(visible) {
+  const result = $("#plan-what-if-result");
+  if (result) result.hidden = !visible;
+}
+
+function impactUnits(value) {
+  return typeof value === "string" && value.length > 0
+    ? `${compactDecimal(value)} wstETH`
+    : "unavailable";
+}
+
+function impactPredicateLabel(value) {
+  if (!value) return "—";
+  return `${humanize(value.status)} · ${humanize(value.reason)}`;
+}
+
+function renderWhatIf(result) {
+  state.whatIf = result;
+  const original = result?.original ?? {};
+  const simulated = result?.simulated ?? {};
+  const originalSnapshot = original.snapshot ?? {};
+  const simulatedSnapshot = simulated.snapshot ?? {};
+  const changed = result?.changed_predicates?.[0];
+  const session = result?.simulation_session ?? {};
+  setWhatIfResultVisible(true);
+  setPlanPill("#plan-what-if-status", "HYPOTHETICAL");
+  setText("#plan-what-if-note", "This is a separate immutable analysis session. It does not invalidate or alter the original reservation, overlay, session or nonce.");
+  setText("#plan-what-if-original-label", originalSnapshot.display_label ?? "—");
+  setText("#plan-what-if-original-direct", impactUnits(originalSnapshot.direct_available_units));
+  setText("#plan-what-if-original-aave", impactUnits(originalSnapshot.aave_exposure_units));
+  setText("#plan-what-if-original-total", impactUnits(originalSnapshot.total_exposure_units));
+  setText("#plan-what-if-original-cap", impactUnits(originalSnapshot.dependency_cap_units));
+  setText("#plan-what-if-original-predicate", impactPredicateLabel(original.predicates?.total_exposure_cap));
+  setText("#plan-what-if-simulated-label", simulatedSnapshot.display_label ?? "WHAT-IF / SIMULATION");
+  setText("#plan-what-if-simulated-direct", impactUnits(simulatedSnapshot.direct_available_units));
+  setText("#plan-what-if-simulated-aave", impactUnits(simulatedSnapshot.aave_exposure_units));
+  setText("#plan-what-if-simulated-total", impactUnits(simulatedSnapshot.total_exposure_units));
+  setText("#plan-what-if-simulated-cap", impactUnits(simulatedSnapshot.dependency_cap_units));
+  setText("#plan-what-if-simulated-predicate", impactPredicateLabel(simulated.predicates?.total_exposure_cap));
+  setText("#plan-what-if-explanation", result?.explanation ?? "—");
+  setText("#plan-what-if-changed-predicate", changed?.predicate ?? "—");
+  setText("#plan-what-if-changed-original", impactPredicateLabel(changed?.original));
+  setText("#plan-what-if-changed-simulated", impactPredicateLabel(changed?.simulated));
+  appendList(
+    "#plan-what-if-plans",
+    (result?.affected_plans ?? []).map((plan) => {
+      const scope = plan.dependency_scope === "direct_only_shared_total"
+        ? "direct-only plan relies on shared total cap"
+        : "Aave + direct plan relies on shared total cap";
+      return `${plan.agent_id} · ${scope} · ${humanize(plan.simulated?.reservation_status)}; actual state unchanged`;
+    }),
+    "No stored plan review or accepted plan is affected.",
+  );
+  appendList(
+    "#plan-what-if-path",
+    (result?.causal_path ?? []).map((edge) => `${edge.from} → ${edge.to} · ${humanize(edge.relation)} · ${edge.explanation}`),
+    "No causal path returned.",
+  );
+  const affectedReservations = result?.affected_reservations ?? [];
+  setText(
+    "#plan-what-if-reservations-note",
+    affectedReservations.length > 0
+      ? `${affectedReservations.length} reservation copy marked for re-evaluation; actual reservation state is unchanged.`
+      : "No actual reservation has been invalidated; any affected reservation is hypothetical review output.",
+  );
+  setText("#plan-what-if-session", session.session_id ?? "—");
+  setText("#plan-what-if-evaluation-ref", session.base_evaluation_ref ?? "—");
+  setText("#plan-what-if-graph-hash", shortHash(session.base_graph_hash));
+  setText("#plan-what-if-reservations", session.reservations_copy?.length ? session.reservations_copy.join(", ") : "none recorded");
+  setText(
+    "#plan-what-if-permits",
+    session.simulated_permits_copy?.length
+      ? session.simulated_permits_copy.join(", ")
+      : "No permit-check evidence recorded; issuance/check history unknown",
+  );
+  setText("#plan-what-if-execution", `${result?.execution_boundary?.code ?? "SIMULATION_NOT_EXECUTABLE"} · ${result?.execution_boundary?.explanation ?? "not executable"}`);
+}
+
+async function runPlanWhatIf() {
+  const token = beginPlanRequest("what-if");
+  if (!state.planSource?.evaluation_ref || !state.plan) {
+    if (planRequestLifecycle.isCurrent(token)) {
+      setText("#plan-what-if-error", "Evaluate the current plan before running the what-if.");
+      setPlanPill("#plan-what-if-status", "BLOCKED");
+    }
+    if (planRequestLifecycle.finish(token)) setDisabled("#plan-run-what-if", true);
+    return;
+  }
+  setDisabled("#plan-run-what-if", true);
+  setPlanPill("#plan-what-if-status", "UNVERIFIED");
+  setText("#plan-what-if-error", "POST /api/exposure/what-if in flight; original plan result remains separate.");
+  try {
+    const result = await postJson("/api/exposure/what-if", {
+      evaluation_ref: state.planSource.evaluation_ref,
+      scenario: "aave_evidence_unavailable",
+    });
+    if (!planRequestLifecycle.isCurrent(token)) return;
+    if (result?.status !== "ok" || result?.mode !== "what_if") {
+      const error = new Error("Dependency impact is unavailable.");
+      error.payload = result;
+      throw error;
+    }
+    renderWhatIf(result);
+    setText("#plan-what-if-error", "");
+    setStatus("Aave evidence what-if evaluated in a separate non-authorizing session.", "success");
+  } catch (error) {
+    if (!planRequestLifecycle.isCurrent(token)) return;
+    state.whatIf = null;
+    setWhatIfResultVisible(false);
+    setPlanPill("#plan-what-if-status", "BLOCKED");
+    setText("#plan-what-if-error", `What-if blocked: ${errorMessage(error)}`);
+    setStatus(`What-if blocked: ${errorMessage(error)}`, "error");
+  } finally {
+    if (planRequestLifecycle.finish(token)) {
+      setDisabled("#plan-run-what-if", !state.plan || !state.planSource?.evaluation_ref);
+    }
+  }
 }
 
 async function evaluateEditedPlan(options = {}) {
@@ -736,6 +1059,12 @@ function renderGraph(graph) {
     return;
   }
   const mode = graph.mode === "replay" ? "REPLAY" : graph.mode === "fixture" ? "FIXTURE" : "LIVE";
+  if (!state.planSource) {
+    renderActiveProvenance({
+      mode: graph.mode ?? "live",
+      provenance: mode === "FIXTURE" ? "FIXTURE" : mode === "REPLAY" ? "REPLAY" : "LIVE_SOURCE",
+    });
+  }
   setText("#exposure-graph-mode", `${mode} SOURCE VALIDATED`);
   setText("#exposure-source-state", `${mode} Graph + Base RPC same-block check`);
   setText(
@@ -1061,6 +1390,9 @@ if (typeof document !== "undefined") {
   $("#plan-case-total")?.addEventListener("click", () => loadPlanCase("reduce_total_exposure"));
   $("#plan-source-fixture")?.addEventListener("click", () => loadFixtureSource("repair_over_limit"));
   $("#plan-source-live")?.addEventListener("click", loadLiveSource);
+  $("#plan-run-what-if")?.addEventListener("click", () => {
+    void runPlanWhatIf();
+  });
   $("#plan-edit-form")?.addEventListener("submit", (event) => {
     event.preventDefault();
     void evaluateEditedPlan();

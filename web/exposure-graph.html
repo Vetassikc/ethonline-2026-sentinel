@@ -16,29 +16,31 @@
           <div class="exposure-hero-heading">
             <div>
               <p class="eyebrow">Sentinel-8004 · Base · source-attributed guardrail</p>
-              <h1>Sentinel Exposure Graph</h1>
+              <h1>See the decision before authorization</h1>
               <p class="intro">
-                A bounded wstETH exposure review that traces direct holdings and
-                Aave supply claims to one asset before any authorization boundary.
+                Trace direct holdings and Aave supply to one wstETH dependency,
+                then compare the requested plan with a bounded repair.
               </p>
             </div>
-            <div class="exposure-badge-stack" aria-label="Demo mode badges">
-              <span class="status-pill status-pill-neutral" id="exposure-live-badge">LIVE</span>
-              <span class="status-pill status-pill-neutral" id="exposure-replay-badge">REPLAY</span>
+            <div class="exposure-badge-stack" aria-label="Available demo capabilities">
+              <span class="status-pill status-pill-neutral" id="exposure-active-source">ACTIVE PROVENANCE · PENDING</span>
+              <span class="status-pill status-pill-neutral">READ-ONLY REVIEW</span>
+              <span class="status-pill status-pill-neutral" id="exposure-live-badge">CAPABILITY · LIVE SOURCE</span>
+              <span class="status-pill status-pill-neutral" id="exposure-replay-badge">CAPABILITY · REPLAY</span>
             </div>
           </div>
           <div class="hero-proof-strip exposure-proof-strip">
             <div class="proof-step">
               <span class="proof-step-index">01</span>
-              <p>Graph qualifies the configured Base account and shared dependency paths.</p>
+              <p><strong>Shared dependency.</strong> Direct holding and Aave supply converge on one wstETH cap.</p>
             </div>
             <div class="proof-step">
               <span class="proof-step-index">02</span>
-              <p>RPC checks the same block and normalizes the Aave supply relation.</p>
+              <p><strong>Decision.</strong> The requested quantities are compared with the configured limits.</p>
             </div>
             <div class="proof-step">
               <span class="proof-step-index">03</span>
-              <p>Policy derives a bounded amount; permit and paper execution stay gated.</p>
+              <p><strong>Boundary.</strong> Repair and what-if remain review-only; legacy authorization stays separate.</p>
             </div>
           </div>
         </div>
@@ -48,15 +50,15 @@
         Loading server-owned exposure configuration…
       </div>
 
-      <div class="plan-primary-workspace">
+      <div class="plan-primary-workspace" aria-label="Proposed plan, shared exposure and decision review">
       <section id="plan-intent-panel" class="card plan-panel">
         <div class="panel-heading">
           <div>
-            <p class="section-label">Task 3 · read-only plan review</p>
-            <h2>Review the dependency impact before authorization</h2>
+            <p class="section-label">Proposed plan · read only</p>
+            <h2>Set the intent and ordered steps</h2>
             <p class="panel-summary">
-              The service resolves the source, policy and paper-session eligibility on the server.
-              This screen can explain and repair a plan; it cannot reserve, sign or execute it.
+              Start from a canonical case or edit the exact quantities. Source, policy and
+              paper eligibility are resolved by the service; this review never reserves or signs.
             </p>
           </div>
           <span id="plan-case-mode" class="status-pill status-pill-neutral">FIXTURE PENDING</span>
@@ -184,14 +186,14 @@
       <section id="plan-graph-panel" class="card plan-panel">
         <div class="panel-heading">
           <div>
-            <p class="section-label">Shared dependency</p>
-            <h2>Direct holding and Aave supply converge on wstETH</h2>
+            <p class="section-label">Shared exposure · original snapshot</p>
+            <h2>One wstETH dependency, two attributable paths</h2>
             <p class="panel-summary">
-              The quantities are derived from the server response. The graph is an explanation surface,
-              not a transaction or reservation view.
+              Direct holding and Aave supply both contribute to the same total-exposure cap.
+              Values are always rendered from the server response.
             </p>
           </div>
-          <span class="status-pill status-pill-neutral">SOURCE-BOUND</span>
+          <span id="plan-graph-provenance" class="status-pill status-pill-neutral">ORIGINAL · PENDING</span>
         </div>
         <div class="plan-dependency-graph" aria-label="Direct holding and Aave supply share one wstETH dependency">
           <div class="plan-graph-node plan-graph-direct">
@@ -217,10 +219,10 @@
       <section id="plan-decision-panel" class="card plan-panel">
         <div class="panel-heading">
           <div>
-            <p class="section-label">Original plan diagnostic</p>
-            <h2>Hypothetical projection, separate from authorization replay</h2>
+            <p class="section-label">Decision summary</p>
+            <h2 id="plan-decision-heading">Review the requested plan</h2>
             <p id="plan-decision-note" class="panel-summary">
-              The service will show whether the full arithmetic projection is complete.
+              The requested plan, policy result and execution boundary stay separate.
             </p>
           </div>
           <span id="plan-policy-status" class="status-pill status-pill-neutral">PENDING</span>
@@ -231,65 +233,196 @@
           <div class="metric-item"><dt>Paper eligibility</dt><dd id="plan-paper-value">—</dd></div>
           <div class="metric-item"><dt>Real transaction</dt><dd id="plan-real-tx-value">—</dd></div>
         </div>
+        <p class="plan-causal-summary"><strong>Why this matters:</strong> <span id="plan-causal-summary">The service will explain how the shared dependency changes the decision.</span></p>
         <details id="plan-diagnostics-details" class="plan-disclosure plan-diagnostics-disclosure">
-          <summary>Show hypothetical projection and authorization replay details</summary>
-        <div class="plan-state-grid">
-          <div>
-            <p class="section-label">Diagnostic projection</p>
-            <dl class="plan-detail-list">
-              <div><dt>Status</dt><dd id="plan-diagnostic-status">—</dd></div>
-              <div><dt>Projected total</dt><dd id="plan-diagnostic-total">—</dd></div>
-              <div><dt>Projected Aave</dt><dd id="plan-diagnostic-aave">—</dd></div>
-              <div><dt>Violations</dt><dd id="plan-diagnostic-violations">—</dd></div>
-            </dl>
+          <summary>Show diagnostic projection and authorization replay details</summary>
+          <div class="plan-state-grid">
+            <div>
+              <p class="section-label">Diagnostic projection</p>
+              <dl class="plan-detail-list">
+                <div><dt>Status</dt><dd id="plan-diagnostic-status">—</dd></div>
+                <div><dt>Projected total</dt><dd id="plan-diagnostic-total">—</dd></div>
+                <div><dt>Projected Aave</dt><dd id="plan-diagnostic-aave">—</dd></div>
+                <div><dt>Violations</dt><dd id="plan-diagnostic-violations">—</dd></div>
+              </dl>
+            </div>
+            <div>
+              <p class="section-label">Authorization replay</p>
+              <dl class="plan-detail-list">
+                <div><dt>Replay completeness</dt><dd id="plan-replay-completeness">—</dd></div>
+                <div><dt>Final state semantics</dt><dd id="plan-replay-semantics">—</dd></div>
+                <div><dt>Unevaluated steps</dt><dd id="plan-unevaluated-steps">—</dd></div>
+                <div><dt>Blocking predicates</dt><dd id="plan-replay-violations">—</dd></div>
+              </dl>
+            </div>
           </div>
-          <div>
-            <p class="section-label">Authorization replay</p>
-            <dl class="plan-detail-list">
-              <div><dt>Replay completeness</dt><dd id="plan-replay-completeness">—</dd></div>
-              <div><dt>Final state semantics</dt><dd id="plan-replay-semantics">—</dd></div>
-              <div><dt>Unevaluated steps</dt><dd id="plan-unevaluated-steps">—</dd></div>
-              <div><dt>Blocking predicates</dt><dd id="plan-replay-violations">—</dd></div>
-            </dl>
-          </div>
-        </div>
         </details>
       </section>
 
       <section id="plan-repair-panel" class="card plan-panel">
         <div class="panel-heading">
           <div>
-            <p class="section-label">Engine-generated repair</p>
-            <h2>Bounded candidate for operator review</h2>
+            <p class="section-label">Requested → repaired</p>
+            <h2>Compare the bounded candidate</h2>
             <p id="plan-repair-note" class="panel-summary">
-              A repair is explanatory output only. No reservation exists for this candidate.
+              The candidate is a projected review result, not an executed plan or reservation.
             </p>
           </div>
           <span id="plan-repair-status" class="status-pill status-pill-neutral">PENDING</span>
         </div>
-        <div class="plan-repair-grid">
-          <div>
-            <p class="section-label">Changed steps</p>
-            <ol id="plan-repair-steps" class="plan-step-list">
-              <li>Waiting for the service response.</li>
-            </ol>
-          </div>
-          <div>
-            <p class="section-label">Repair result</p>
-            <dl class="plan-detail-list">
-              <div><dt>Direct</dt><dd id="plan-repair-direct">—</dd></div>
-              <div><dt>Aave</dt><dd id="plan-repair-aave">—</dd></div>
-              <div><dt>Total</dt><dd id="plan-repair-total">—</dd></div>
-              <div><dt>Goal fulfillment</dt><dd id="plan-repair-goal">—</dd></div>
-            </dl>
-            <details id="plan-raw-details" class="plan-inline-disclosure">
-              <summary>Show exact raw quantities</summary>
-              <p id="plan-repair-raw" class="field-note">—</p>
+        <div class="plan-comparison-layout">
+          <div class="plan-comparison-card">
+            <p class="section-label">Requested versus repaired steps</p>
+            <table class="plan-comparison-table">
+              <caption class="sr-only">Requested and repaired plan quantities</caption>
+              <thead>
+                <tr><th scope="col">Step</th><th scope="col">Requested</th><th scope="col">Repaired</th></tr>
+              </thead>
+              <tbody id="plan-comparison-rows">
+                <tr><td colspan="3">Waiting for the service response.</td></tr>
+              </tbody>
+            </table>
+            <details id="plan-repair-steps-details" class="plan-inline-disclosure">
+              <summary>Show candidate steps</summary>
+              <ol id="plan-repair-steps" class="plan-step-list">
+                <li>Waiting for the service response.</li>
+              </ol>
             </details>
           </div>
+          <div class="plan-projection-comparison">
+            <article id="plan-diagnostic-card" class="plan-state-card plan-state-card-original">
+              <div class="plan-state-card-heading">
+                <div>
+                  <p class="section-label">Original diagnostic projection</p>
+                  <h3>Requested plan · hypothetical</h3>
+                </div>
+                <span id="plan-diagnostic-status-pill" class="status-pill status-pill-neutral">PENDING</span>
+              </div>
+              <dl class="plan-detail-list">
+                <div><dt>Projected total</dt><dd id="plan-diagnostic-total-visible">—</dd></div>
+                <div><dt>Projected Aave</dt><dd id="plan-diagnostic-aave-visible">—</dd></div>
+                <div><dt>Violations</dt><dd id="plan-diagnostic-violations-visible">—</dd></div>
+              </dl>
+            </article>
+            <article id="plan-repair-projection" class="plan-state-card plan-state-card-repaired">
+              <div class="plan-state-card-heading">
+                <div>
+                  <p class="section-label">Projected repaired state</p>
+                  <h3>Candidate · not executed</h3>
+                </div>
+                <span id="plan-repair-projection-label" class="status-pill status-pill-neutral">PENDING</span>
+              </div>
+              <dl class="plan-detail-list">
+                <div><dt>Direct</dt><dd id="plan-repair-direct">—</dd></div>
+                <div><dt>Aave</dt><dd id="plan-repair-aave">—</dd></div>
+                <div><dt>Total</dt><dd id="plan-repair-total">—</dd></div>
+                <div><dt>Candidate policy</dt><dd id="plan-repair-policy">—</dd></div>
+                <div><dt>Goal fulfillment</dt><dd id="plan-repair-goal">—</dd></div>
+              </dl>
+            </article>
+          </div>
         </div>
+        <details id="plan-raw-details" class="plan-inline-disclosure">
+          <summary>Show exact raw quantities</summary>
+          <p id="plan-repair-raw" class="field-note">—</p>
+        </details>
       </section>
       </div>
+
+      <section id="plan-what-if-panel" class="card plan-panel plan-what-if-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="section-label">Dependency impact · read only</p>
+            <h2>Trace one Aave evidence outage</h2>
+            <p id="plan-what-if-note" class="panel-summary">
+              Run the allowlisted read-only scenario against the current server-owned evaluation.
+              It creates a separate analysis session and never changes the original context.
+            </p>
+          </div>
+          <span id="plan-what-if-status" class="status-pill status-pill-neutral">PENDING</span>
+        </div>
+        <div class="control-row plan-what-if-controls">
+          <button id="plan-run-what-if" type="button" disabled>Run Aave evidence what-if</button>
+          <span id="plan-what-if-scenario" class="field-note">Scenario: aave_evidence_unavailable</span>
+        </div>
+        <p id="plan-what-if-error" class="field-note" role="alert"></p>
+        <div id="plan-what-if-result" class="plan-what-if-result" aria-live="polite" hidden>
+          <div class="plan-what-if-snapshots">
+            <article id="plan-what-if-original" class="plan-what-if-snapshot">
+              <div class="plan-what-if-snapshot-heading">
+                <div>
+                  <p class="section-label">Original snapshot</p>
+                  <h3 id="plan-what-if-original-label">—</h3>
+                </div>
+                <span class="status-pill status-pill-neutral">BASE</span>
+              </div>
+              <dl class="plan-detail-list">
+                <div><dt>Direct holding</dt><dd id="plan-what-if-original-direct">—</dd></div>
+                <div><dt>Aave supply</dt><dd id="plan-what-if-original-aave">—</dd></div>
+                <div><dt>Total exposure</dt><dd id="plan-what-if-original-total">—</dd></div>
+                <div><dt>Total cap</dt><dd id="plan-what-if-original-cap">—</dd></div>
+                <div><dt>Predicate</dt><dd id="plan-what-if-original-predicate">—</dd></div>
+              </dl>
+            </article>
+            <article id="plan-what-if-simulated" class="plan-what-if-snapshot plan-what-if-snapshot-simulated">
+              <div class="plan-what-if-snapshot-heading">
+                <div>
+                  <p class="section-label">Hypothetical overlay</p>
+                  <h3 id="plan-what-if-simulated-label">WHAT-IF / SIMULATION</h3>
+                </div>
+                <span class="status-pill status-pill-downsize">HYPOTHETICAL</span>
+              </div>
+              <dl class="plan-detail-list">
+                <div><dt>Direct holding</dt><dd id="plan-what-if-simulated-direct">—</dd></div>
+                <div><dt>Aave evidence</dt><dd id="plan-what-if-simulated-aave">—</dd></div>
+                <div><dt>Total exposure</dt><dd id="plan-what-if-simulated-total">—</dd></div>
+                <div><dt>Total cap</dt><dd id="plan-what-if-simulated-cap">—</dd></div>
+                <div><dt>Predicate</dt><dd id="plan-what-if-simulated-predicate">—</dd></div>
+              </dl>
+            </article>
+          </div>
+          <div class="plan-what-if-explanation">
+            <p id="plan-what-if-explanation" class="panel-summary">—</p>
+            <div class="plan-what-if-impact-grid">
+              <div>
+                <p class="section-label">Changed predicate</p>
+                <dl class="plan-detail-list">
+                  <div><dt>Predicate</dt><dd id="plan-what-if-changed-predicate">—</dd></div>
+                  <div><dt>Original</dt><dd id="plan-what-if-changed-original">—</dd></div>
+                  <div><dt>What-if</dt><dd id="plan-what-if-changed-simulated">—</dd></div>
+                </dl>
+              </div>
+              <div>
+                <p class="section-label">Affected plans</p>
+                <ul id="plan-what-if-plans" class="plan-step-list">
+                  <li>—</li>
+                </ul>
+                <p id="plan-what-if-reservations-note" class="field-note">
+                  No actual reservation has been invalidated; any affected reservation is hypothetical review output.
+                </p>
+              </div>
+            </div>
+          </div>
+          <details id="plan-what-if-path-details" class="plan-disclosure">
+            <summary>Show causal dependency path</summary>
+            <p class="field-note">A cryptographically valid permit can still be rejected when current conditions no longer establish permission.</p>
+            <ol id="plan-what-if-path" class="plan-impact-path">
+              <li>—</li>
+            </ol>
+          </details>
+          <details id="plan-what-if-provenance-details" class="plan-disclosure">
+            <summary>Show simulation provenance and authorization boundary</summary>
+            <dl class="plan-detail-list plan-provenance-list">
+              <div><dt>Simulation session</dt><dd id="plan-what-if-session">—</dd></div>
+              <div><dt>Base evaluation</dt><dd id="plan-what-if-evaluation-ref">—</dd></div>
+              <div><dt>Base graph hash</dt><dd id="plan-what-if-graph-hash">—</dd></div>
+              <div><dt>Analysis reservation references</dt><dd id="plan-what-if-reservations">—</dd></div>
+              <div><dt>Recorded permit-check evidence</dt><dd id="plan-what-if-permits">—</dd></div>
+              <div><dt>Execution boundary</dt><dd id="plan-what-if-execution">—</dd></div>
+            </dl>
+          </details>
+        </div>
+      </section>
 
       <details id="plan-secondary-details" class="plan-disclosure plan-secondary-panels">
         <summary>Show budgets, timeline, provenance and unavailable capabilities</summary>
@@ -309,7 +442,7 @@
           <div class="metric-item"><dt>Repaired candidate peak total</dt><dd id="plan-repair-peak-total">—</dd></div>
           <div class="metric-item"><dt>Repaired candidate peak Aave</dt><dd id="plan-repair-peak-aave">—</dd></div>
         </div>
-        <p id="plan-budget-note" class="field-note">Active reservation deltas are not available in Task 3.</p>
+        <p id="plan-budget-note" class="field-note">Active reservation deltas are unavailable in this read-only review.</p>
       </section>
 
       <section id="plan-timeline-panel" class="card plan-panel">
@@ -325,31 +458,39 @@
         </ol>
       </section>
 
-      <section id="plan-what-if-panel" class="card plan-panel">
+      <section id="plan-provenance-panel" class="card plan-panel">
         <div class="panel-heading">
           <div>
-            <p class="section-label">Unavailable boundary</p>
-            <h2>No reservations or runtime what-if in Task 3</h2>
-            <p id="plan-what-if-note" class="panel-summary">
-              This checkpoint does not simulate runtime events, mutate sessions or claim reservation admission.
-            </p>
+            <p class="section-label">Source details</p>
+            <h2>Evidence provenance and service boundary</h2>
           </div>
-          <span class="status-pill status-pill-neutral">UNAVAILABLE</span>
+          <span class="status-pill status-pill-neutral">PROGRESSIVE DETAIL</span>
         </div>
-        <details id="plan-provenance-details" class="plan-disclosure">
-          <summary>Show source provenance and server boundary</summary>
-          <dl class="plan-detail-list plan-provenance-list">
-            <div><dt>Mode</dt><dd id="plan-source-mode">—</dd></div>
-            <div><dt>Qualification</dt><dd id="plan-source-qualification">—</dd></div>
-            <div><dt>Block</dt><dd id="plan-source-block">—</dd></div>
-            <div><dt>Graph hash</dt><dd id="plan-source-hash">—</dd></div>
-            <div><dt>Gaps</dt><dd id="plan-source-gaps">—</dd></div>
-            <div><dt>Boundary</dt><dd id="plan-boundary-status">—</dd></div>
-          </dl>
-        </details>
+        <dl class="plan-detail-list plan-provenance-list">
+          <div><dt>Mode</dt><dd id="plan-source-mode">—</dd></div>
+          <div><dt>Qualification</dt><dd id="plan-source-qualification">—</dd></div>
+          <div><dt>Block</dt><dd id="plan-source-block">—</dd></div>
+          <div><dt>Graph hash</dt><dd id="plan-source-hash">—</dd></div>
+          <div><dt>Gaps</dt><dd id="plan-source-gaps">—</dd></div>
+          <div><dt>Boundary</dt><dd id="plan-boundary-status">—</dd></div>
+        </dl>
       </section>
+
       </details>
 
+      <section id="legacy-demo-section" class="legacy-demo-section" aria-labelledby="legacy-demo-heading">
+        <div class="legacy-demo-header">
+          <div>
+            <p class="section-label">Legacy single-purchase flow</p>
+            <h2 id="legacy-demo-heading">Permit and paper-execution controls remain separate</h2>
+            <p class="panel-summary">
+              This existing bounded demo keeps its own evaluation, permit and replay gates.
+              The editable multi-step planner above cannot enable these controls.
+            </p>
+          </div>
+          <span class="status-pill status-pill-neutral">LEGACY GATES</span>
+        </div>
+        <div class="legacy-demo-content">
       <section id="exposure-request-panel" class="card exposure-panel">
         <div class="panel-heading">
           <div>
@@ -563,6 +704,8 @@
           <span id="exposure-replay-verdict" class="field-note">No replay requested.</span>
         </div>
         <pre id="exposure-replay-output" class="exposure-output">Replay is available after a live evaluation reference exists.</pre>
+      </section>
+        </div>
       </section>
 
       <footer class="exposure-footer">

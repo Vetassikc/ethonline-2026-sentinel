@@ -50,6 +50,7 @@ test("GET / returns the hosted submission hub HTML", async () => {
   assert.equal(response.contentType, "text/html; charset=utf-8");
   assert.match(html, /Sentinel-8004 public submission entrypoint/);
   assert.match(html, /Open Live Judge Demo/);
+  assert.match(html, /href="\/exposure-graph"[^>]*>Open Sentinel Exposure Graph<\/a>/);
   assert.match(html, /Open Operator Test Flow/);
   assert.match(html, /og:title/);
   assert.match(html, /Open Shared Sepolia Config JSON/);
