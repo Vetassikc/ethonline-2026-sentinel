@@ -22,6 +22,7 @@ import { repairExposurePlan, type ExposureRepairResult } from "./exposure-plan-r
 import { validateExposurePlan } from "./exposure-plan-request.ts";
 import {
   createExposureRuntimeState,
+  type StoredExposurePlanReview,
   type ExposureRuntimeState,
 } from "./exposure-service.ts";
 import { formatFixedUnits, parseFixedUnits } from "./exposure-policy.ts";
@@ -369,6 +370,7 @@ function evaluationResponse(
   plan: ExposurePlanV1,
   policy: ExposurePlanPolicy,
   caseName?: ExposurePlanCase,
+  onEvaluated?: (review: StoredExposurePlanReview) => void,
 ): ExposurePlanRouteResponse {
   const qualification = qualifySource(evaluation, policy);
   const source = sourceSummary(evaluation, qualification);
@@ -387,6 +389,16 @@ function evaluationResponse(
     source_provenance: provenance,
     paper_session_eligible: qualification.paper_session_eligible,
     accept_partial: false,
+  });
+  onEvaluated?.({
+    plan: {
+      schema_version: plan.schema_version,
+      agent_id: plan.agent_id,
+      goal: { ...plan.goal },
+      steps: plan.steps.map((step) => ({ ...step })),
+    },
+    evaluation: evaluated,
+    evaluated_at_ms: Date.now(),
   });
   return {
     statusCode: 200,
@@ -641,7 +653,18 @@ export function evaluateExposurePlanRequest(
   const stored = currentStoredEvaluation(state, validation.request.evaluation_ref, now);
   if (stored.status === "missing") return sourceFailureResponse("invalid_evaluation_reference", ["evaluation_reference_unknown"]);
   if (stored.status === "expired") return sourceFailureResponse("expired_evaluation_reference", ["evaluation_reference_expired"]);
-  const result = evaluationResponse(stored.evaluation, validation.request.plan, policy);
+  const result = evaluationResponse(
+    stored.evaluation,
+    validation.request.plan,
+    policy,
+    undefined,
+    (review) => {
+      state.plan_reviews.set(validation.request.evaluation_ref, {
+        ...review,
+        evaluated_at_ms: now.getTime(),
+      });
+    },
+  );
   if (result.statusCode === 200 && result.payload && typeof result.payload === "object") {
     result.payload.validation = { ok: true };
   }

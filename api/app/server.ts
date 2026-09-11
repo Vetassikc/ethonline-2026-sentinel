@@ -22,7 +22,12 @@ import {
   type ExposureServiceDependencies,
 } from "./exposure-service.ts";
 import {
+  buildExposureDependencyImpact,
+  type ExposureImpactPlanInput,
+} from "./exposure-impact.ts";
+import {
   buildExposurePlanConfig,
+  DEFAULT_EXPOSURE_PLAN_POLICY,
   evaluateExposurePlanDemo,
   evaluateExposurePlanRequest,
   issueExposurePlanFixtureReference,
@@ -38,6 +43,7 @@ import {
   executeExposurePlanReservation,
   getExposureOperatorCookieToken,
   getExposureOperatorRecoveryChallenge,
+  getExposurePlanImpactAcceptedPlans,
   isExposureOperatorHostAllowed,
   issueExposurePlanPermitForReservation,
   resetExposurePlanOperatorSession,
@@ -71,6 +77,7 @@ import {
 } from "./shared-sepolia.ts";
 import { resolveGraphPositionOptions } from "../../scripts/graph-position.ts";
 import type { ExposureEvaluation, ExposureRequest } from "../../shared/schemas/exposure-graph.ts";
+import { EXPOSURE_WHAT_IF_SCENARIO } from "../../shared/schemas/exposure-impact.ts";
 
 type JudgeModeResponse = {
   statusCode: number;
@@ -301,6 +308,110 @@ function invalidExposureRouteRequest(details: string): JudgeModeResponse {
     statusCode: 400,
     payload: { error: "invalid_exposure_route_request", details: [details] },
   };
+}
+
+const EXPOSURE_EVALUATION_REFERENCE_PATTERN = /^exposure_[0-9a-f]{32}$/;
+
+function validateExposureWhatIfRequest(input: unknown):
+  | { ok: true; evaluation_ref: string; scenario: typeof EXPOSURE_WHAT_IF_SCENARIO }
+  | { ok: false; details: string[] } {
+  if (!isRecord(input) || !hasExactKeys(input, ["evaluation_ref", "scenario"])) {
+    return { ok: false, details: ["request_keys"] };
+  }
+  if (typeof input.evaluation_ref !== "string"
+      || !EXPOSURE_EVALUATION_REFERENCE_PATTERN.test(input.evaluation_ref)) {
+    return { ok: false, details: ["evaluation_ref"] };
+  }
+  if (input.scenario !== EXPOSURE_WHAT_IF_SCENARIO) {
+    return { ok: false, details: ["scenario"] };
+  }
+  return {
+    ok: true,
+    evaluation_ref: input.evaluation_ref,
+    scenario: EXPOSURE_WHAT_IF_SCENARIO,
+  };
+}
+
+function buildExposureWhatIfImpact(
+  input: unknown,
+  state: ExposureRuntimeState,
+  now: Date,
+): JudgeModeResponse {
+  const validation = validateExposureWhatIfRequest(input);
+  if (!validation.ok) {
+    return {
+      statusCode: 400,
+      payload: { error: "invalid_exposure_what_if_request", details: validation.details },
+    };
+  }
+  const stored = state.evaluations.get(validation.evaluation_ref);
+  if (!stored) {
+    return { statusCode: 400, payload: { error: "invalid_evaluation_reference" } };
+  }
+  if (stored.expires_at_ms <= now.getTime()) {
+    return { statusCode: 410, payload: { error: "expired_evaluation_reference" } };
+  }
+  const refreshed = buildExposurePlanRefreshSnapshot(validation.evaluation_ref, stored.evaluation);
+  if (refreshed.status === "blocked") {
+    return {
+      statusCode: 503,
+      payload: { error: "source_unavailable", details: ["source_not_qualified"] },
+    };
+  }
+  const graphBlock = stored.evaluation.graph.source.block;
+  const review = state.plan_reviews.get(validation.evaluation_ref);
+  const reviewPlans: ExposureImpactPlanInput[] = review
+    ? [{
+        plan: review.plan,
+        plan_hash: review.evaluation.plan_hash,
+        original: {
+          policy_status: review.evaluation.policy_status,
+          goal_status: review.evaluation.goal_status,
+          paper_eligibility: review.evaluation.paper_eligibility,
+        },
+      }]
+    : [];
+  const acceptedPlans: ExposureImpactPlanInput[] = getExposurePlanImpactAcceptedPlans(
+    state,
+    validation.evaluation_ref,
+  ).map((accepted) => ({
+    plan: accepted.plan,
+    plan_hash: accepted.plan_hash,
+    original: accepted.original,
+    reservation_id: accepted.reservation_id,
+    reservation_state: accepted.reservation_state,
+    permit_check_id: accepted.permit_check_id,
+  }));
+  const byIdentity = new Map<string, ExposureImpactPlanInput>();
+  for (const plan of [...reviewPlans, ...acceptedPlans]) {
+    const identity = plan.reservation_id ?? plan.plan_hash ?? JSON.stringify(plan.plan);
+    byIdentity.set(identity, plan);
+  }
+  try {
+    return {
+      statusCode: 200,
+      payload: buildExposureDependencyImpact({
+        evaluation_ref: validation.evaluation_ref,
+        evaluation: stored.evaluation,
+        accounting_state: refreshed.snapshot.state,
+        policy: DEFAULT_EXPOSURE_PLAN_POLICY,
+        source: {
+          mode: stored.evaluation.mode,
+          provenance: refreshed.snapshot.source.provenance,
+          graph_hash: refreshed.snapshot.source.graph_hash,
+          block_number: graphBlock.number,
+          block_hash: graphBlock.hash,
+        },
+        plans: [...byIdentity.values()],
+        scenario: validation.scenario,
+      }),
+    };
+  } catch {
+    return {
+      statusCode: 503,
+      payload: { error: "source_unavailable", details: ["what_if_evaluator_unavailable"] },
+    };
+  }
 }
 
 function buildExposureConfig(): Record<string, unknown> {
@@ -728,6 +839,10 @@ export async function handleJudgeModeRequest(
       };
     }
 
+    if (pathname === "/api/exposure/what-if") {
+      return buildExposureWhatIfImpact(payload, runtimeState, now);
+    }
+
     if (pathname === "/api/exposure/plan/validate") {
       const result = evaluateExposurePlanRequest(payload, {
         runtimeState,
@@ -813,6 +928,9 @@ export async function handleJudgeModeRequest(
       }
       if (typeof payload.session_id !== "string" || (payload.mode !== "live" && payload.mode !== "what_if")) {
         return invalidExposureRouteRequest("session_id and mode are bounded values.");
+      }
+      if (payload.mode === "what_if") {
+        return { statusCode: 409, payload: { status: "rejected", code: "SIMULATION_NOT_EXECUTABLE" } };
       }
       const permitValidation = validateSignedExposurePlanPermit(payload.permit);
       if (!permitValidation.ok) return { statusCode: 400, payload: { error: "invalid_plan_permit", details: permitValidation.details } };

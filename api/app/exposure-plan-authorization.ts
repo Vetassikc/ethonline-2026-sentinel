@@ -688,6 +688,53 @@ function acceptedPlanRecord(
   return getExposurePlanAuthorizationRuntime(state).accepted_plans.get(reservationId) ?? null;
 }
 
+export type ExposurePlanImpactAcceptedPlan = {
+  plan: ExposurePlanV1;
+  plan_hash: string;
+  original: {
+    policy_status: ExposurePlanEvaluation["policy_status"];
+    goal_status: ExposurePlanEvaluation["goal_status"];
+    paper_eligibility: ExposurePlanEvaluation["paper_eligibility"];
+  };
+  reservation_id: string;
+  reservation_state: string;
+  permit_check_id: string | null;
+};
+
+/**
+ * Return only analysis-safe accepted-plan metadata for the Task 5 fork.
+ * Account, cookies, credentials and signed permit material stay in the
+ * authorization runtime and are never copied into the simulation response.
+ */
+export function getExposurePlanImpactAcceptedPlans(
+  state: ExposureRuntimeState,
+  evaluationRef: string,
+): ExposurePlanImpactAcceptedPlan[] {
+  const authorization = getExposurePlanAuthorizationRuntime(state);
+  const plans: ExposurePlanImpactAcceptedPlan[] = [];
+  for (const record of authorization.accepted_plans.values()) {
+    if (record.source.evaluation_ref !== evaluationRef) continue;
+    const view = getExposureReservationExecutionView(runtimeOf(state), record.reservation_id);
+    if (!view) continue;
+    plans.push({
+      plan: clonePlan(record.plan),
+      plan_hash: view.reservation.plan_hash,
+      original: {
+        policy_status: record.evaluation.policy_status,
+        goal_status: record.evaluation.goal_status,
+        paper_eligibility: record.evaluation.paper_eligibility,
+      },
+      reservation_id: record.reservation_id,
+      reservation_state: view.reservation.state,
+      // The current operator runtime does not persist permit-check receipts.
+      // Keep the absence explicit instead of deriving a historical check from
+      // the reservation identifier.
+      permit_check_id: null,
+    });
+  }
+  return plans;
+}
+
 export function acceptExposurePlanForOperator(
   state: ExposureRuntimeState,
   session: ExposurePlanOperatorSession,
@@ -810,6 +857,9 @@ export function issueExposurePlanPermitForReservation(
   request: { reservation_id: string; session_id: string; mode: "live" | "what_if" },
   options: { now?: Date } = {},
 ): { statusCode: number; payload: Record<string, unknown> } {
+  if (request.mode === "what_if") {
+    return { statusCode: 409, payload: { status: "rejected", code: "SIMULATION_NOT_EXECUTABLE" } };
+  }
   if (request.mode !== "live" || request.session_id !== session.session_id) {
     return { statusCode: 409, payload: { status: "rejected", code: "SESSION_CONTEXT_MISMATCH" } };
   }

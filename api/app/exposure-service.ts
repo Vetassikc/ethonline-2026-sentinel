@@ -28,6 +28,8 @@ import type {
   ExposurePolicyDecision,
   ExposureRequest,
 } from "../../shared/schemas/exposure-graph.ts";
+import type { ExposurePlanV1 } from "../../shared/schemas/exposure-plan.ts";
+import type { ExposurePlanEvaluation } from "./exposure-plan-engine.ts";
 
 export const DEFAULT_EXPOSURE_POLICY: ExposurePolicyConfig = {
   policy_version: "exposure-wsteth-v1",
@@ -42,8 +44,15 @@ export type StoredExposureEvaluation = {
   expires_at_ms: number;
 };
 
+export type StoredExposurePlanReview = {
+  plan: ExposurePlanV1;
+  evaluation: ExposurePlanEvaluation;
+  evaluated_at_ms: number;
+};
+
 export type ExposureRuntimeState = {
   evaluations: Map<string, StoredExposureEvaluation>;
+  plan_reviews: Map<string, StoredExposurePlanReview>;
   consumed_nonces: Set<string>;
   pending_accounts: Set<string>;
   reservation_runtime: ExposureReservationRuntime;
@@ -83,6 +92,7 @@ export type ExposureEvaluationResponse = {
 function createEmptyState(options: ExposureRuntimeStateOptions = {}): ExposureRuntimeState {
   return {
     evaluations: new Map(),
+    plan_reviews: new Map(),
     consumed_nonces: new Set(),
     pending_accounts: new Set(),
     reservation_runtime: createExposureReservationRuntime(options.reservation),
@@ -126,6 +136,9 @@ function deniedPolicy(
 function pruneExpiredEvaluations(state: ExposureRuntimeState, nowMs: number): void {
   for (const [reference, stored] of state.evaluations) {
     if (stored.expires_at_ms <= nowMs) state.evaluations.delete(reference);
+  }
+  for (const [reference] of state.plan_reviews) {
+    if (!state.evaluations.has(reference)) state.plan_reviews.delete(reference);
   }
 }
 
